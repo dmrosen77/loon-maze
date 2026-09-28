@@ -214,6 +214,15 @@ class LakeAudio {
     noise.start(t, Math.random() * 1.5, 0.32);
   }
 
+  // Sparkly rising arpeggio as HP grows back.
+  heal() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    [0, 4, 7, 12, 16, 19, 24].forEach((semitones, i) => {
+      this.chipNote('triangle', 523 * 2 ** (semitones / 12), t + i * 0.08, 0.3, 0.14, this.sfxBus);
+    });
+  }
+
   // Short falling blip when the loon loses HP.
   hurt() {
     if (!this.started) return;

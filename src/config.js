@@ -25,10 +25,12 @@ export const LOON_SPEED = 180;
 export const LOON_STROKE_MS = 380;
 // How fast the loon turns to face its swimming direction, in radians per second.
 export const LOON_TURN_SPEED = 12;
-// Hit points. Each swim into the reeds costs 1, and 0 is game over. After a
-// hit the loon can't be hurt again for LOON_INVULNERABLE_MS (it blinks).
-// HP refills at the start of every level.
-export const LOON_MAX_HP = 5;
+// Hit points. Each swim into the reeds costs HIT_DAMAGE, and 0 is game over.
+// After a hit the loon can't be hurt again for LOON_INVULNERABLE_MS (it
+// blinks). HP carries over between levels; each reunion heals REUNION_HEAL.
+export const LOON_MAX_HP = 50;
+export const HIT_DAMAGE = 1;
+export const REUNION_HEAL = 5;
 export const LOON_INVULNERABLE_MS = 1000;
 // Square collision box, so walls behave the same whichever way the loon faces.
 // The sprite is a bit longer than this, so its head can poke into the reeds.

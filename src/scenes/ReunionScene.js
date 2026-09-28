@@ -1,8 +1,18 @@
 import * as Phaser from 'phaser';
-import { TILE_SIZE, SPRITE_PIXEL_SIZE, WATER_DRIFT, REUNION_MS, FONT_FAMILY, TITLE_COLORS } from '../config.js';
+import {
+  TILE_SIZE,
+  SPRITE_PIXEL_SIZE,
+  WATER_DRIFT,
+  REUNION_MS,
+  LOON_MAX_HP,
+  REUNION_HEAL,
+  FONT_FAMILY,
+  TITLE_COLORS,
+} from '../config.js';
 import { BABY_LOON_BIG, HEART, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import loonBigUrl from '../assets/loon-big.png';
+import HpBar from '../ui/HpBar.js';
 
 // Screen pixels per art pixel for the big cutscene sprites.
 const BIG_PIXEL = 4;
@@ -23,7 +33,8 @@ const TEXT_STYLE = {
 };
 
 // Played after each maze: the parent glides in, the chick paddles over and
-// hops onto its back, hearts float up, then the next level starts.
+// hops onto its back, hearts float up, the loon gets a little HP back, then
+// the next level starts.
 export default class ReunionScene extends Phaser.Scene {
   constructor() {
     super('ReunionScene');
@@ -35,6 +46,8 @@ export default class ReunionScene extends Phaser.Scene {
 
   create(data) {
     this.level = data.level;
+    this.hp = data.hp ?? LOON_MAX_HP;
+    this.healedHp = Math.min(LOON_MAX_HP, this.hp + REUNION_HEAL);
     this.leaving = false;
     this.riding = false;
     this.nextWakeTime = 0;
@@ -65,6 +78,15 @@ export default class ReunionScene extends Phaser.Scene {
 
     this.parent = this.add.image(-300, PARENT_REST.y, 'loon-big').setScale(BIG_PIXEL);
     this.baby = this.add.image(width + 100, PARENT_REST.y - 30, 'baby-loon-big').setFlipX(true);
+
+    this.hpBar = new HpBar(this, 206, 490, {
+      width: 300,
+      height: 16,
+      max: LOON_MAX_HP,
+      value: this.hp,
+      fontSize: 16,
+      fixed: false,
+    });
 
     this.cameras.main.fadeIn(500, 0, 0, 0);
     this.playSequence();
@@ -153,6 +175,24 @@ export default class ReunionScene extends Phaser.Scene {
     });
 
     this.showTitle();
+    this.time.delayedCall(1100, () => this.heal());
+  }
+
+  // The HP bar grows back, with a "+5 HP" floating up beside it.
+  heal() {
+    const gained = this.healedHp - this.hp;
+    this.hpBar.setValue(this.healedHp);
+    if (gained > 0) this.audio?.heal();
+
+    const popup = this.add
+      .text(this.hpBar.number.x + 110, 490, gained > 0 ? `+${gained} HP` : 'HP FULL', {
+        ...TEXT_STYLE,
+        fontSize: '16px',
+        strokeThickness: 4,
+        color: '#5ad04a',
+      })
+      .setOrigin(0, 0.5);
+    this.tweens.add({ targets: popup, y: 450, alpha: 0, delay: 700, duration: 900, ease: 'Sine.easeIn' });
   }
 
   // "REUNITED!" drops in letter by letter, then keeps bobbing in a wave.
@@ -198,7 +238,7 @@ export default class ReunionScene extends Phaser.Scene {
     this.leaving = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('GameScene', { level: this.level + 1 });
+      this.scene.start('GameScene', { level: this.level + 1, hp: this.healedHp });
     });
   }
 

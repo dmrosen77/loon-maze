@@ -12,6 +12,7 @@ import {
   LOON_TURN_SPEED,
   LOON_BODY_SIZE,
   LOON_MAX_HP,
+  HIT_DAMAGE,
   LOON_INVULNERABLE_MS,
   SPRITE_PIXEL_SIZE,
   REED_SWAY_SPEED,
@@ -35,6 +36,7 @@ import {
   makeWaterTexture,
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import HpBar from '../ui/HpBar.js';
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -60,12 +62,13 @@ export default class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  // create() runs again on scene.restart({ level }), so each level gets a fresh maze.
+  // Started with { level, hp }. HP carries over from the last level (via the
+  // reunion cutscene); a new game starts at level 1 with full HP.
   create(data) {
     this.level = data?.level ?? 1;
     this.reunited = false;
     this.gameOver = false;
-    this.hp = LOON_MAX_HP;
+    this.hp = data?.hp ?? LOON_MAX_HP;
     this.invulnerableUntil = 0;
     this.lastBumpTime = 0;
     this.nextStrokeTime = 0;
@@ -225,7 +228,7 @@ export default class GameScene extends Phaser.Scene {
       .text(12, 8, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setScrollFactor(0)
       .setDepth(10);
-    this.createHpBar();
+    this.hpBar = new HpBar(this, 12, 40, { width: 160, height: 12, max: LOON_MAX_HP, value: this.hp });
 
     const { width, height } = this.scale;
     const banner = this.add
@@ -242,42 +245,6 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // "HP" and one segment per hit point, under the level label.
-  createHpBar() {
-    const x = 12;
-    const y = 34;
-    this.add
-      .text(x, y, 'HP', { ...TEXT_STYLE, fontSize: '12px', strokeThickness: 4 })
-      .setScrollFactor(0)
-      .setDepth(10);
-    this.hpSegments = [];
-    for (let i = 0; i < LOON_MAX_HP; i++) {
-      const segment = this.add
-        .rectangle(x + 34 + i * 20, y + 2, 16, 10, 0x5ad04a)
-        .setOrigin(0)
-        .setStrokeStyle(2, 0x000000)
-        .setScrollFactor(0)
-        .setDepth(10);
-      this.hpSegments.push(segment);
-    }
-  }
-
-  updateHpBar() {
-    this.hpSegments.forEach((segment, i) => {
-      this.tweens.killTweensOf(segment);
-      segment.setAlpha(1);
-      if (i >= this.hp) {
-        segment.setFillStyle(0x3a1d1d); // Lost.
-      } else if (this.hp === 1) {
-        // Last one left: red and pulsing.
-        segment.setFillStyle(0xe8475f);
-        this.tweens.add({ targets: segment, alpha: 0.3, duration: 300, yoyo: true, repeat: -1 });
-      } else {
-        segment.setFillStyle(0x5ad04a);
-      }
-    });
-  }
-
   // The collider fires every frame while pushing into reeds, so only count a
   // hit (thud and damage) when the loon first touches them, not continuously.
   bump() {
@@ -291,9 +258,9 @@ export default class GameScene extends Phaser.Scene {
 
   takeDamage(now) {
     if (this.reunited || this.gameOver || now < this.invulnerableUntil) return;
-    this.hp -= 1;
+    this.hp = Math.max(0, this.hp - HIT_DAMAGE);
     this.invulnerableUntil = now + LOON_INVULNERABLE_MS;
-    this.updateHpBar();
+    this.hpBar.setValue(this.hp);
     this.cameras.main.shake(120, 0.006);
 
     if (this.hp <= 0) {
@@ -343,7 +310,7 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(400, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('ReunionScene', { level: this.level });
+        this.scene.start('ReunionScene', { level: this.level, hp: this.hp });
       });
     });
   }

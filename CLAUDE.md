@@ -16,7 +16,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Mos
 - `src/main.js`: Phaser game config (fixed-size view, Arcade physics)
 - `src/config.js`: every tuning value (sizes, speeds, level curve, volumes, colors). Put new tunables here, not inline.
 - `src/scenes/TitleScene.js`: animated night-lake title screen with title music; Enter starts level 1
-- `src/scenes/GameScene.js`: gameplay. Builds the maze and handles movement, collisions and HP. Reaching the baby fades to the reunion cutscene. Each new touch of the reeds costs 1 HP (see `bump()`/`takeDamage()`), followed by `LOON_INVULNERABLE_MS` of blinking. At 0 HP it fades to the game-over cutscene. HP refills every level.
+- `src/scenes/GameScene.js`: gameplay. Builds the maze and handles movement, collisions and HP. Reaching the baby fades to the reunion cutscene. Each new touch of the reeds costs `HIT_DAMAGE` (see `bump()`/`takeDamage()`), followed by `LOON_INVULNERABLE_MS` of blinking. At 0 HP it fades to the game-over cutscene. HP carries between levels: scenes pass `{ level, hp }`, and the reunion heals `REUNION_HEAL`.
 - `src/scenes/ReunionScene.js`: the between-levels cutscene. The big parent glides in, the chick hops onto its back, hearts float up and "REUNITED!" appears, then it starts the next level (after `REUNION_MS`, or on Enter).
 - `src/scenes/GameOverScene.js`: the game-over cutscene. A bald eagle dives in (wings swept back), grabs the loon and flaps off with it, then GAME OVER. Enter returns to the title. The eagle's wingbeat alternates two frames cut from one generated image.
 - `src/assets/*.png`: cutscene sprites (the big loon and two eagle frames), made from `art-source/` images by `tools/pixelize.py` (needs Pillow). It removes the magenta background and purple fringe, shrinks the image to its native pixel grid, and can erase regions and rotate. The exact commands for each asset are in the script's docstring. Re-run them if a source image changes. The matching chick (`BABY_LOON_BIG`) and `HEART` are grids in `pixelArt.js`.
@@ -24,6 +24,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Mos
 - `art-source/`: reference images the pixel art is based on, such as AI-generated concepts on a magenta background. They aren't loaded by the game. At small in-game sprite size, downscaling gave muddy results, so those grids are redrawn by hand using them as reference. Large cutscene sprites convert well with `tools/pixelize.py`.
 - `src/mazes/generateMaze.js`: recursive-backtracker generator; puts the baby on the tile farthest from the start
 - `src/mazes/maze1.js`: hand-made maze, used when `PROCEDURAL_MAZE` is false
+- `src/ui/HpBar.js`: the HP bar used in gameplay and the reunion. Losses snap down and the lost chunk drains after a moment. Gains grow back with a count-up. It turns amber at 40% and red and pulsing at 20%. Fills use `scaleX`, not `width`, because Phaser rectangles don't reliably redraw when `width` changes.
 - `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene changes. Scenes call `playMusic('title' | 'lake')`, which crossfades and is a no-op if that music is already playing. `stopMusic()` fades to silence, which the game-over cutscene uses.
 
 ## How things work
