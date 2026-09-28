@@ -65,8 +65,6 @@ export default class GameScene extends Phaser.Scene {
     this.level = data?.level ?? 1;
     this.reunited = false;
     this.gameOver = false;
-    this.leaving = false;
-    this.enterKey = null;
     this.hp = LOON_MAX_HP;
     this.invulnerableUntil = 0;
     this.lastBumpTime = 0;
@@ -317,61 +315,20 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // Out of HP: the loon sinks out of sight and GAME OVER comes up.
-  // Enter goes back to the title screen.
+  // Out of HP: a moment frozen in red, then fade into the eagle cutscene.
   loseGame() {
     this.gameOver = true;
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
     this.tweens.killTweensOf(this.loon);
-    this.audio?.gameOver();
+    this.loon.setAlpha(1).setTint(0xff6060);
+    this.audio?.hurt();
 
-    this.loon.setTint(0x6a7a8a);
-    this.tweens.add({
-      targets: this.loon,
-      scale: 0.4,
-      alpha: 0,
-      angle: this.loon.angle + 180,
-      duration: 1400,
-      ease: 'Sine.easeIn',
-    });
-    this.wake.emitParticleAt(this.loon.x, this.loon.y, 16);
-
-    const { width, height } = this.scale;
-    const overlay = this.add
-      .rectangle(0, 0, width, height, 0x000000)
-      .setOrigin(0)
-      .setScrollFactor(0)
-      .setDepth(9)
-      .setAlpha(0);
-    this.tweens.add({ targets: overlay, alpha: 0.6, delay: 600, duration: 800 });
-
-    const lines = [
-      this.add.text(width / 2, height / 2 - 40, 'GAME OVER', { ...TEXT_STYLE, fontSize: '48px', color: '#e8475f' }),
-      this.add.text(width / 2, height / 2 + 20, `You reached level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px' }),
-    ];
-    lines.forEach((line) => {
-      line.setOrigin(0.5).setScrollFactor(0).setDepth(10).setAlpha(0);
-      this.tweens.add({ targets: line, alpha: 1, delay: 1000, duration: 600 });
-    });
-
-    this.time.delayedCall(1600, () => {
-      this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
-      const prompt = this.add
-        .text(width / 2, height / 2 + 90, 'PRESS ENTER', { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
-        .setOrigin(0.5)
-        .setScrollFactor(0)
-        .setDepth(10);
-      this.time.addEvent({ delay: 500, loop: true, callback: () => prompt.setVisible(!prompt.visible) });
-    });
-  }
-
-  backToTitle() {
-    if (this.leaving) return;
-    this.leaving = true;
-    this.cameras.main.fadeOut(500, 0, 0, 0);
-    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('TitleScene');
+    this.time.delayedCall(500, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.start('GameOverScene', { level: this.level });
+      });
     });
   }
 
@@ -400,11 +357,7 @@ export default class GameScene extends Phaser.Scene {
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
     this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
 
-    if (this.gameOver) {
-      if (this.enterKey && Phaser.Input.Keyboard.JustDown(this.enterKey)) this.backToTitle();
-      return;
-    }
-    if (this.reunited) return;
+    if (this.gameOver || this.reunited) return;
 
     const { left, right, up, down } = this.cursors;
     const velocity = new Phaser.Math.Vector2(

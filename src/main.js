@@ -4,6 +4,7 @@ import { VIEW_WIDTH, VIEW_HEIGHT, FONT_FAMILY, COLORS } from './config.js';
 import TitleScene from './scenes/TitleScene.js';
 import GameScene from './scenes/GameScene.js';
 import ReunionScene from './scenes/ReunionScene.js';
+import GameOverScene from './scenes/GameOverScene.js';
 
 const config = {
   type: Phaser.AUTO,
@@ -15,7 +16,7 @@ const config = {
     default: 'arcade',
     arcade: { debug: false },
   },
-  scene: [TitleScene, GameScene, ReunionScene], // The first one listed starts automatically.
+  scene: [TitleScene, GameScene, ReunionScene, GameOverScene], // The first one listed starts automatically.
 };
 
 // Phaser draws text with whatever font is ready at the time, so wait for the

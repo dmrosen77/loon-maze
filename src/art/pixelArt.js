@@ -100,7 +100,7 @@ export const BABY_LOON_TOP = {
 };
 
 // Cutscene art, drawn at the same chunky scale as src/assets/loon-big.png (the
-// parent, converted from art-source/loon-top.webp by tools/prepare_big_loon.py).
+// parent, converted from art-source/loon-top.webp by tools/pixelize.py).
 // A round, fluffy chick facing right: dark cap, pale throat and belly, and
 // faint tufts of down ('k') around the edge.
 export const BABY_LOON_BIG = {

@@ -140,6 +140,80 @@ class LakeAudio {
     return () => clearTimeout(timer);
   }
 
+  // Fade the music out entirely (the next playMusic() call brings it back).
+  stopMusic() {
+    this.wantedMusic = null;
+    if (!this.music) return;
+    const old = this.music;
+    old.stop();
+    old.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.3);
+    setTimeout(() => old.gain.disconnect(), 2000);
+    this.music = null;
+  }
+
+  // A bald eagle's piercing, chattering scream: a high whistle that jumps up
+  // and falls away, with a fast warble and a breathy edge.
+  screech() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const length = 0.9;
+
+    const osc = ctx.createOscillator();
+    osc.frequency.setValueAtTime(2400, t);
+    osc.frequency.linearRampToValueAtTime(3200, t + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(1900, t + length);
+    const warble = ctx.createOscillator();
+    warble.frequency.value = 28;
+    const warbleDepth = ctx.createGain();
+    warbleDepth.gain.value = 140;
+    warble.connect(warbleDepth).connect(osc.frequency);
+
+    const breath = ctx.createBufferSource();
+    breath.buffer = this.noiseBuffer;
+    const breathFilter = ctx.createBiquadFilter();
+    breathFilter.type = 'bandpass';
+    breathFilter.frequency.value = 3000;
+    breathFilter.Q.value = 3;
+    const breathGain = ctx.createGain();
+    breathGain.gain.value = 0.5;
+
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.14, t + 0.05);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + length);
+
+    osc.connect(gain);
+    breath.connect(breathFilter).connect(breathGain).connect(gain);
+    gain.connect(this.sfxBus);
+    gain.connect(this.echo);
+    osc.start(t);
+    warble.start(t);
+    breath.start(t, 0, length);
+    osc.stop(t + length);
+    warble.stop(t + length);
+  }
+
+  // A heavy whoosh for one beat of the eagle's wings.
+  wingFlap() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.setValueAtTime(300, t);
+    filter.frequency.linearRampToValueAtTime(700, t + 0.12);
+    filter.frequency.linearRampToValueAtTime(250, t + 0.3);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.5, t + 0.1);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    noise.connect(filter).connect(gain).connect(this.sfxBus);
+    noise.start(t, Math.random() * 1.5, 0.32);
+  }
+
   // Short falling blip when the loon loses HP.
   hurt() {
     if (!this.started) return;

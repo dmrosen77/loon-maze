@@ -2,7 +2,7 @@
 
 Top-down browser game: guide a loon through a lake maze of reeds to its baby. Each level is a larger, randomly generated maze.
 
-Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Simple shapes only for now; no image or audio assets.
+Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Most art is pixel grids in code; the big cutscene sprites are PNGs in `src/assets/`. All audio is synthesized, with no audio files.
 
 ## Commands
 
@@ -16,14 +16,15 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - `src/main.js`: Phaser game config (fixed-size view, Arcade physics)
 - `src/config.js`: every tuning value (sizes, speeds, level curve, volumes, colors). Put new tunables here, not inline.
 - `src/scenes/TitleScene.js`: animated night-lake title screen with title music; Enter starts level 1
-- `src/scenes/GameScene.js`: gameplay. Builds the maze and handles movement, collisions and HP. Reaching the baby fades to the reunion cutscene. Each new touch of the reeds costs 1 HP (see `bump()`/`takeDamage()`), followed by `LOON_INVULNERABLE_MS` of blinking. At 0 HP it's game over, and Enter returns to the title. HP refills every level.
+- `src/scenes/GameScene.js`: gameplay. Builds the maze and handles movement, collisions and HP. Reaching the baby fades to the reunion cutscene. Each new touch of the reeds costs 1 HP (see `bump()`/`takeDamage()`), followed by `LOON_INVULNERABLE_MS` of blinking. At 0 HP it fades to the game-over cutscene. HP refills every level.
 - `src/scenes/ReunionScene.js`: the between-levels cutscene. The big parent glides in, the chick hops onto its back, hearts float up and "REUNITED!" appears, then it starts the next level (after `REUNION_MS`, or on Enter).
-- `src/assets/loon-big.png`: the cutscene's parent loon. It's generated from `art-source/loon-top.webp` by `python3 tools/prepare_big_loon.py` (needs Pillow), which removes the magenta background and shrinks the image to its native pixel grid. Re-run the script if the source image changes. The matching chick (`BABY_LOON_BIG`) and `HEART` are grids in `pixelArt.js`.
+- `src/scenes/GameOverScene.js`: the game-over cutscene. A bald eagle dives in (wings swept back), grabs the loon and flaps off with it, then GAME OVER. Enter returns to the title. The eagle's wingbeat alternates two frames cut from one generated image.
+- `src/assets/*.png`: cutscene sprites (the big loon and two eagle frames), made from `art-source/` images by `tools/pixelize.py` (needs Pillow). It removes the magenta background and purple fringe, shrinks the image to its native pixel grid, and can erase regions and rotate. The exact commands for each asset are in the script's docstring. Re-run them if a source image changes. The matching chick (`BABY_LOON_BIG`) and `HEART` are grids in `pixelArt.js`.
 - `src/art/pixelArt.js`: pixel art as character grids (same idea as mazes) plus `makePixelTexture()` to turn a grid into a texture. It holds the side-view loon for the title screen and the top-down loon (two paddling frames) and chick for gameplay. Top-down art faces right, and the game rotates it. Reed wall tiles and the water tile are generated from fixed seeds (`reedTexture`, `makeWaterTexture`) rather than hand-drawn, and the water is a drifting TileSprite. Each reed texture is keyed by variant, the sides that face water (those edges fray and get semi-transparent overhang), and a sway frame. `GameScene.swayReeds()` swaps frames in a traveling wind wave. Reed images are 48px with 40px static bodies.
-- `art-source/`: reference images the pixel art is based on, such as AI-generated concepts on a magenta background. They aren't loaded by the game. Automatic downscaling of these gave muddy results at sprite size, so the grids are redrawn by hand using them as reference.
+- `art-source/`: reference images the pixel art is based on, such as AI-generated concepts on a magenta background. They aren't loaded by the game. At small in-game sprite size, downscaling gave muddy results, so those grids are redrawn by hand using them as reference. Large cutscene sprites convert well with `tools/pixelize.py`.
 - `src/mazes/generateMaze.js`: recursive-backtracker generator; puts the baby on the tile farthest from the start
 - `src/mazes/maze1.js`: hand-made maze, used when `PROCEDURAL_MAZE` is false
-- `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene changes. Scenes call `playMusic('title' | 'lake')`, which crossfades and is a no-op if that music is already playing.
+- `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene changes. Scenes call `playMusic('title' | 'lake')`, which crossfades and is a no-op if that music is already playing. `stopMusic()` fades to silence, which the game-over cutscene uses.
 
 ## How things work
 
@@ -48,6 +49,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - When the pane is hidden, the game loop is throttled, so time-based events like the level advance only move forward while screenshots are being taken.
 - Synthetic `KeyboardEvent`s dispatched on `window` drive movement. They don't count as user activation for audio, so click the canvas first.
 - Random mazes can't be steered by script. To test reunion or levels, temporarily expose the game (`window.__game = new Phaser.Game(config)`), then use `scene.loon.body.reset(x, y)` or `scene.scene.restart({ level })`. Remove the hook before committing.
+- Cutscenes can finish between screenshots. Slow one down with `scene.time.timeScale`, `scene.tweens.timeScale` and `scene.anims.globalTimeScale` (for example 0.3).
 - The zoom screenshot action doesn't work in the pane. To inspect sprites up close, zoom the game camera instead: `camera.stopFollow()`, `camera.useBounds = false`, `camera.setZoom(5)`, then `camera.setScroll(...)`.
 - Starting a scene from a script doesn't run `create()` right away, and it takes longer while the pane is hidden, so wait before touching the new scene's objects.
 
