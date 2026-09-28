@@ -42,9 +42,9 @@ export const VOLUME = {
 // Used for all in-game text. Loaded from the @fontsource/press-start-2p package.
 export const FONT_FAMILY = 'Press Start 2P';
 
+// Reed colors are in REED_PALETTE in src/art/pixelArt.js.
 export const COLORS = {
   water: '#2a6f97',
-  reeds: 0x4c8c2b,
 };
 
 // Night lake on the title screen.

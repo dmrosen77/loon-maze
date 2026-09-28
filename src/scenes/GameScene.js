@@ -14,11 +14,17 @@ import {
   LOON_BODY_SIZE,
   SPRITE_PIXEL_SIZE,
   FONT_FAMILY,
-  COLORS,
 } from '../config.js';
 import handMadeMaze from '../mazes/maze1.js';
 import generateMaze from '../mazes/generateMaze.js';
-import { LOON_TOP_FEET_OUT, LOON_TOP_FEET_IN, BABY_LOON_TOP, makePixelTexture } from '../art/pixelArt.js';
+import {
+  LOON_TOP_FEET_OUT,
+  LOON_TOP_FEET_IN,
+  BABY_LOON_TOP,
+  REED_TILE_VARIANTS,
+  makePixelTexture,
+  makeReedTextures,
+} from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 
 const TEXT_STYLE = {
@@ -59,6 +65,8 @@ export default class GameScene extends Phaser.Scene {
     const mazeWidth = maze[0].length * TILE_SIZE;
     const mazeHeight = maze.length * TILE_SIZE;
 
+    this.createSprites();
+
     const reeds = this.physics.add.staticGroup();
     let loonStart;
     let babyStart;
@@ -68,7 +76,11 @@ export default class GameScene extends Phaser.Scene {
         const x = colIndex * TILE_SIZE + TILE_SIZE / 2;
         const y = rowIndex * TILE_SIZE + TILE_SIZE / 2;
         if (cell === '#') {
-          reeds.add(this.add.rectangle(x, y, TILE_SIZE, TILE_SIZE, COLORS.reeds));
+          // A random variation at a random quarter turn, so the walls don't
+          // look like a repeating pattern.
+          const reed = this.add.image(x, y, `reeds-${Phaser.Math.Between(0, REED_TILE_VARIANTS - 1)}`);
+          reed.setAngle(90 * Phaser.Math.Between(0, 3));
+          reeds.add(reed);
         } else if (cell === 'P') {
           loonStart = { x, y };
         } else if (cell === 'B') {
@@ -76,8 +88,6 @@ export default class GameScene extends Phaser.Scene {
         }
       });
     });
-
-    this.createSprites();
 
     // The chick faces roughly the way its parent will come from, snapped to
     // up/down/left/right since pixel art looks ragged at odd angles.
@@ -109,6 +119,7 @@ export default class GameScene extends Phaser.Scene {
     makePixelTexture(this, 'loon-top-feet-out', LOON_TOP_FEET_OUT, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'loon-top-feet-in', LOON_TOP_FEET_IN, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'baby-loon-top', BABY_LOON_TOP, SPRITE_PIXEL_SIZE);
+    makeReedTextures(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
     if (!this.anims.exists('loon-paddle')) {
       this.anims.create({
         key: 'loon-paddle',

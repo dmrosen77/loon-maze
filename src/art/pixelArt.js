@@ -99,6 +99,70 @@ export const BABY_LOON_TOP = {
   ],
 };
 
+// Reed tiles for the maze walls, seen from above. Unlike the loon these are
+// generated rather than hand-drawn, so there are several variations. Each one
+// uses a fixed seed, so it comes out the same every time.
+export const REED_TILE_VARIANTS = 4;
+
+const REED_PALETTE = {
+  s: '#142a0f', // deep shadow between stems
+  d: '#1f3d17', // dark mat of reeds
+  m: '#3a7327', // blades
+  l: '#6aa83c', // sunlit blade tips
+  b: '#6b4226', // cattail head
+  B: '#9a643a', // cattail highlight
+};
+
+const EIGHT_DIRECTIONS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
+
+function reedTileRows(rng, size) {
+  const grid = Array.from({ length: size }, () => Array(size).fill('d'));
+  const set = (x, y, char) => {
+    if (x >= 0 && x < size && y >= 0 && y < size) grid[y][x] = char;
+  };
+
+  // Speckles of shadow in the mat.
+  for (let i = 0; i < (size * size) / 8; i++) {
+    set(rng.between(0, size - 1), rng.between(0, size - 1), 's');
+  }
+
+  // Clumps: blades fanning out from a stem, with lighter tips.
+  for (let clump = 0; clump < 7; clump++) {
+    const x = rng.between(1, size - 2);
+    const y = rng.between(1, size - 2);
+    const blades = rng.between(3, 5);
+    for (let blade = 0; blade < blades; blade++) {
+      const [dx, dy] = rng.pick(EIGHT_DIRECTIONS);
+      const length = rng.between(3, 6);
+      for (let i = 0; i < length; i++) {
+        set(x + dx * i, y + dy * i, i === length - 1 ? 'l' : 'm');
+      }
+    }
+  }
+
+  // A cattail head or two, seen end-on.
+  const cattails = rng.between(0, 2);
+  for (let i = 0; i < cattails; i++) {
+    const x = rng.between(2, size - 4);
+    const y = rng.between(2, size - 4);
+    set(x, y, 'B');
+    set(x + 1, y, 'b');
+    set(x, y + 1, 'b');
+    set(x + 1, y + 1, 'b');
+  }
+
+  return grid.map((row) => row.join(''));
+}
+
+// Makes textures 'reeds-0' to 'reeds-N' sized to fill one maze tile.
+export function makeReedTextures(scene, tileSize, pixelSize) {
+  const size = tileSize / pixelSize;
+  for (let i = 0; i < REED_TILE_VARIANTS; i++) {
+    const rng = new Phaser.Math.RandomDataGenerator([`reeds-${i}`]);
+    makePixelTexture(scene, `reeds-${i}`, { palette: REED_PALETTE, rows: reedTileRows(rng, size) }, pixelSize);
+  }
+}
+
 // Draws the art into a texture. Nearest-neighbor filtering keeps the pixels
 // crisp when a sprite is rotated.
 export function makePixelTexture(scene, key, art, pixelSize) {
