@@ -67,14 +67,13 @@ export const COLORS = {
   water: '#2a6f97',
 };
 
-// Night lake on the title screen.
+// Moonlit lake on the title screen (seen from above, like the cutscenes).
 export const TITLE_COLORS = {
-  sky: [0x0b1026, 0x111a3a, 0x19254f, 0x223264], // Top band to horizon.
-  stars: 0xfff8e1,
-  moon: 0xf5f1c8,
-  forest: 0x0a1a12,
-  water: 0x1c4e6e,
-  ripple: 0x8ec5e0,
-  reeds: [0x2f5e1c, 0x3d7524],
-  title: '#ffd54f',
+  title: '#ffd54f', // "LOON MAZE" (also "REUNITED!")
+  waterTint: 0x7890c0, // Darkens the water texture to moonlight.
+  glint: 0xdce9ff, // Moonlight glittering on the ripples.
+  firefly: 0xd8ff7a,
 };
+
+// How fast the loon swims back and forth across the title screen (pixels/second).
+export const TITLE_LOON_SPEED = 70;

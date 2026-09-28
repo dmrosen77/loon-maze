@@ -11,6 +11,11 @@ Usage:
 Options:
   --width N          Width of the grid in pixels. Pick N so each cell is about
                      one "pixel" of the source (source width / pixel size).
+  --cell N           Instead of --width: the size of one grid cell in source
+                     pixels. Using the same cell for several sprites gives
+                     them the same pixel density on screen.
+  --crop X0,Y0,X1,Y1 Only use this part of the source (for sheets with several
+                     sprites on one magenta background).
   --erase X0,Y0,X1,Y1  Erase dark pixels in this box (source image coordinates)
                      before shrinking. Light pixels (white, pale gray) are kept,
                      so a white tail overlapping the box survives. Repeatable.
@@ -18,8 +23,8 @@ Options:
                      (game sprites face right).
   --preview PATH     Also save an enlarged preview on a dark blue background.
 
-The grid is always measured from the whole sprite, before erasing, so frames
-cut from the same source line up exactly.
+The grid is always measured from the whole sprite (within --crop), before
+erasing, so frames cut from the same source line up exactly.
 
 Examples (these produce the game's current assets):
   python3 tools/pixelize.py art-source/loon-top.webp src/assets/loon-big.png --width 120
@@ -27,6 +32,11 @@ Examples (these produce the game's current assets):
       --erase 0,384,600,768 --erase 808,384,1408,768 --rotate 90
   python3 tools/pixelize.py art-source/eagle.webp src/assets/eagle-wings-back.png --width 114 \\
       --erase 0,0,600,384 --erase 808,0,1408,384 --rotate 90
+  python3 tools/pixelize.py art-source/baby-loon-top.webp src/assets/baby-loon-big.png --width 48
+  python3 tools/pixelize.py art-source/reeds-clump.webp src/assets/reeds-clump.png --cell 11
+  python3 tools/pixelize.py art-source/lily-pads.webp src/assets/lily-pad-flower.png --cell 11 --crop 0,0,590,768
+  python3 tools/pixelize.py art-source/lily-pads.webp src/assets/lily-pad.png --cell 11 --crop 590,0,1050,768
+  python3 tools/pixelize.py art-source/lily-pads.webp src/assets/lily-pad-small.png --cell 11 --crop 1050,0,1408,768
 
 Needs Pillow (pip install pillow).
 """
@@ -51,7 +61,10 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument('source')
     parser.add_argument('output')
-    parser.add_argument('--width', type=int, required=True)
+    size = parser.add_mutually_exclusive_group(required=True)
+    size.add_argument('--width', type=int)
+    size.add_argument('--cell', type=float)
+    parser.add_argument('--crop')
     parser.add_argument('--erase', action='append', default=[])
     parser.add_argument('--rotate', type=int, default=0, choices=[0, 90, 180, 270])
     parser.add_argument('--preview')
@@ -60,6 +73,13 @@ def main():
     im = Image.open(args.source).convert('RGB')
     W, H = im.size
     px = im.load()
+
+    if args.crop:
+        cx0, cy0, cx1, cy1 = (int(v) for v in args.crop.split(','))
+        for y in range(H):
+            for x in range(W):
+                if not (cx0 <= x < cx1 and cy0 <= y < cy1):
+                    px[x, y] = (255, 0, 255)
 
     xs, ys = [], []
     for y in range(0, H, 2):
@@ -76,11 +96,12 @@ def main():
                 if not is_light(px[x, y]):
                     px[x, y] = (255, 0, 255)
 
-    cell = (x1 - x0 + 1) / args.width
+    width = args.width or round((x1 - x0 + 1) / args.cell)
+    cell = (x1 - x0 + 1) / width
     target_h = round((y1 - y0 + 1) / cell)
-    out = Image.new('RGBA', (args.width, target_h), (0, 0, 0, 0))
+    out = Image.new('RGBA', (width, target_h), (0, 0, 0, 0))
     for gy in range(target_h):
-        for gx in range(args.width):
+        for gx in range(width):
             cx0 = x0 + gx * cell
             cy0 = y0 + gy * cell
             samples = []

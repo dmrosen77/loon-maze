@@ -3,41 +3,6 @@ import * as Phaser from 'phaser';
 // Pixel art drawn as character grids, like the mazes. Each character is one
 // pixel, looked up in the palette; '.' is transparent. Edit by hand.
 
-// Adult loon, side view, facing right: black head with a red eye, striped
-// white necklace, and a black back checkered with white.
-export const LOON = {
-  palette: { K: '#141414', W: '#f4f4f4', R: '#d32f2f', g: '#3c3c3c', S: '#cfd8dc' },
-  rows: [
-    '....................KKKK......',
-    '...................KKKKKK.....',
-    '...................KKKKRKK....',
-    '...................KKKKKKKgggg',
-    '....................KKKKK.....',
-    '...................KWKWK......',
-    '...................KKKKK......',
-    '..KK..............KWKWKK......',
-    '.KKKKKKKKKKKKKKKKKKKKKKK......',
-    'KKWKKWKKWKKWKKWKKWKKKKKKK.....',
-    '.KKKWKKWKKWKKWKKWKKWKKKKKK....',
-    '..KKKKKKKKKKKKKKKKKKKKKKKK....',
-    '...SSSSSSSSSSSSSSSSSSSSSS.....',
-  ],
-};
-
-// Fuzzy gray chick, same facing, small enough to ride on the adult's back.
-export const BABY_LOON = {
-  palette: { G: '#8d8d8d', L: '#d0d0d0', R: '#d32f2f', g: '#3c3c3c' },
-  rows: [
-    '........GGG...',
-    '.......GGRGgg.',
-    '........GGG...',
-    '.GG....GGGG...',
-    'GGGGGGGGGGGG..',
-    '.GGGGGGGGGGG..',
-    '..LLLLLLLLL...',
-  ],
-};
-
 // In-game sprites, seen from above, facing right (the game rotates them to
 // face the way they swim). Two frames of paddling: feet spread, feet tucked.
 // Based on art-source/loon-top.webp, redrawn by hand at game size.
@@ -99,47 +64,8 @@ export const BABY_LOON_TOP = {
   ],
 };
 
-// Cutscene art, drawn at the same chunky scale as src/assets/loon-big.png (the
-// parent, converted from art-source/loon-top.webp by tools/pixelize.py).
-// A round, fluffy chick facing right: sooty down with a dark cap, a small
-// paler chin under the bill and a paler belly, and faint tufts of down ('k')
-// around the edge. The pale shades stay muted so they don't read as white
-// patches at 4x scale.
-export const BABY_LOON_BIG = {
-  palette: {
-    K: '#161413',
-    k: 'rgba(22, 20, 19, 0.45)',
-    D: '#3a3532',
-    G: '#5a534f',
-    L: '#847c76',
-    W: '#a9a098',
-    b: '#787a7e',
-    R: '#aa1e1e',
-  },
-  rows: [
-    '................................',
-    '.........k..k.............k.....',
-    '........KKKKKKKk...kKKKKKKK.....',
-    '......KKDDDDDDGKK.kKDDDDDDDKk...',
-    '...kKKDGDDDDGGDGGKKDDDDDDDDDKk..',
-    '..kKDGDDDDGGGGDDDDDDGGDDDDGDDK..',
-    '..KGGGDDGGGGDGDDGDGDGDGGDDGDGK..',
-    '.KDDDGDGGDGGGGDGDDDDDDDGGRRGGDK.',
-    'kKDGDDDDGGDGDGDDGGDGGDDDGDGGGbbK',
-    'KLDDDDDDDDDDDLLDDDLDDDDDLDDDDbK.',
-    'KDDDDDDDDDDDDDDLDDDDDGDDDLLLDK..',
-    'KDDDDDDDLDDDDDDDDDDDDDDDLLWLDK..',
-    'KDDDDDDDDDDDDDDDDLLDDDGDDLLDK...',
-    '.KLDDDLDDDDDDDDDDLDDDDDDDDDKk...',
-    '.KDDDLDDDDDDDDDDDDDDDKKKKKK.....',
-    '..KDDDDLLLWLWLLWWWWDK...........',
-    '...KDLDWLWWLWWWLLWLK............',
-    '....KKDLWWWWLWWLWKK.............',
-    '......KKWWLLWLLKK.k.............',
-    '........KKKKKKKkk...............',
-  ],
-};
-
+// Heart for the reunion cutscene, drawn at the same chunky scale as the
+// PNG sprites in src/assets/.
 export const HEART = {
   palette: { R: '#e8475f', P: '#ffb3c1', D: '#a82a42' },
   rows: [

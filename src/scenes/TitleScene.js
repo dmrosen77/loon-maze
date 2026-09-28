@@ -1,12 +1,29 @@
 import * as Phaser from 'phaser';
-import { FONT_FAMILY, TITLE_COLORS } from '../config.js';
-import { LOON, BABY_LOON, makePixelTexture } from '../art/pixelArt.js';
+import { TILE_SIZE, SPRITE_PIXEL_SIZE, WATER_DRIFT, FONT_FAMILY, TITLE_COLORS, TITLE_LOON_SPEED } from '../config.js';
+import { makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import loonBigUrl from '../assets/loon-big.png';
+import babyLoonBigUrl from '../assets/baby-loon-big.png';
+import reedsClumpUrl from '../assets/reeds-clump.png';
+import lilyPadFlowerUrl from '../assets/lily-pad-flower.png';
+import lilyPadUrl from '../assets/lily-pad.png';
+import lilyPadSmallUrl from '../assets/lily-pad-small.png';
 
-const HORIZON_Y = 330;
-const MOON = { x: 680, y: 95, radius: 34 };
-const LOON_PIXEL_SIZE = 8;
-const BABY_PIXEL_SIZE = 5;
+// Screen pixels per art pixel for the PNG sprites (made by tools/pixelize.py).
+const ART_SCALE = 3;
+// The chick is drawn a size down so it's about a third of its parent's length.
+const CHICK_SCALE = 2;
+
+// The loon swims back and forth along this line, turning around off-screen.
+const LANE_Y = 380;
+const LANE_ENDS = { left: -260, right: 1100 };
+// Where the chick rides on its parent's back, and where the wake starts,
+// relative to the parent's center (at ART_SCALE, facing right).
+const CHICK_ON_BACK = { x: -25, y: -6 };
+const PARENT_TAIL = -170;
+
+// Draw order, back to front.
+const DEPTH = { water: 0, glints: 1, pads: 2, wake: 3, loon: 4, reeds: 5, fireflies: 6, text: 10 };
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -15,10 +32,21 @@ const TEXT_STYLE = {
   strokeThickness: 6,
 };
 
-// A night lake with the loon (and chick on its back) drifting on the water.
+// A moonlit lake seen from above: the loon swims back and forth with its
+// chick riding on its back, reeds sway in the corners, lily pads bob, moonlight
+// glitters and fireflies drift.
 export default class TitleScene extends Phaser.Scene {
   constructor() {
     super('TitleScene');
+  }
+
+  preload() {
+    this.load.image('loon-big', loonBigUrl);
+    this.load.image('baby-loon-big', babyLoonBigUrl);
+    this.load.image('reeds-clump', reedsClumpUrl);
+    this.load.image('lily-pad-flower', lilyPadFlowerUrl);
+    this.load.image('lily-pad', lilyPadUrl);
+    this.load.image('lily-pad-small', lilyPadSmallUrl);
   }
 
   create() {
@@ -26,10 +54,25 @@ export default class TitleScene extends Phaser.Scene {
     this.audio = getLakeAudio(this);
     this.audio?.playMusic('title');
 
-    this.drawSky();
-    this.drawWater();
-    this.drawLoon();
-    this.drawReeds();
+    for (const key of ['loon-big', 'baby-loon-big', 'reeds-clump', 'lily-pad-flower', 'lily-pad', 'lily-pad-small']) {
+      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    }
+    makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
+    makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
+
+    const { width, height } = this.scale;
+    this.water = this.add
+      .tileSprite(0, 0, width, height, 'water')
+      .setOrigin(0)
+      .setTileScale(2)
+      .setTint(TITLE_COLORS.waterTint)
+      .setDepth(DEPTH.water);
+
+    this.startGlints();
+    this.addLilyPads();
+    this.addLoons();
+    this.addReeds();
+    this.addFireflies();
     this.drawTitle();
     this.drawPrompt();
 
@@ -37,167 +80,166 @@ export default class TitleScene extends Phaser.Scene {
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
   }
 
-  drawSky() {
-    const { width } = this.scale;
-    const bandHeight = HORIZON_Y / TITLE_COLORS.sky.length;
-    TITLE_COLORS.sky.forEach((color, i) => {
-      this.add.rectangle(0, i * bandHeight, width, bandHeight, color).setOrigin(0);
-    });
-
-    // Twinkling stars, each on its own rhythm.
-    for (let i = 0; i < 45; i++) {
-      const size = Phaser.Math.RND.pick([2, 3, 3, 4]);
-      const star = this.add.rectangle(
-        Phaser.Math.Between(0, width),
-        Phaser.Math.Between(0, HORIZON_Y - 60),
-        size,
-        size,
-        TITLE_COLORS.stars,
-      );
-      this.tweens.add({
-        targets: star,
-        alpha: 0.2,
-        duration: Phaser.Math.Between(600, 2000),
-        delay: Phaser.Math.Between(0, 2000),
-        yoyo: true,
-        repeat: -1,
-      });
-    }
-
-    this.add.circle(MOON.x, MOON.y, MOON.radius, TITLE_COLORS.moon);
-
-    // Blocky treeline on the far shore.
-    for (let x = 0; x < width; x += 12) {
-      const height = Phaser.Math.Between(10, 38);
-      this.add.rectangle(x, HORIZON_Y, 12, height, TITLE_COLORS.forest).setOrigin(0, 1);
-    }
-  }
-
-  drawWater() {
+  // Moonlight glittering on the water: brief flecks, mostly in a shimmering
+  // column under the (off-screen) moon to the upper right.
+  startGlints() {
     const { width, height } = this.scale;
-    this.add.rectangle(0, HORIZON_Y, width, height - HORIZON_Y, TITLE_COLORS.water).setOrigin(0);
+    this.time.addEvent({
+      delay: 50,
+      loop: true,
+      callback: () => {
+        const inMoonPath = Math.random() < 0.6;
+        const x = inMoonPath ? 650 + Phaser.Math.Between(-70, 70) : Phaser.Math.Between(0, width);
+        const glint = this.add
+          .rectangle(x, Phaser.Math.Between(0, height), Phaser.Math.Between(2, 4) * 3, 3, TITLE_COLORS.glint)
+          .setAlpha(0)
+          .setDepth(DEPTH.glints);
+        this.tweens.add({
+          targets: glint,
+          alpha: inMoonPath ? 0.9 : 0.5,
+          duration: 350,
+          yoyo: true,
+          onComplete: () => glint.destroy(),
+        });
+      },
+    });
+  }
 
-    // The moon's reflection: stacked bars that shimmer in width.
-    for (let y = HORIZON_Y + 12; y < height - 40; y += 14) {
-      const bar = this.add.rectangle(MOON.x, y, Phaser.Math.Between(30, 70), 4, TITLE_COLORS.moon, 0.6);
+  // Lily pads kept clear of the loon's lane, each gently turning and bobbing.
+  addLilyPads() {
+    const pads = [
+      ['lily-pad-flower', 210, 250, 10],
+      ['lily-pad', 650, 245, -25],
+      ['lily-pad-small', 215, 500, 40],
+      ['lily-pad-small', 630, 505, -60],
+    ];
+    pads.forEach(([key, x, y, angle], i) => {
+      const pad = this.add.image(x, y, key).setScale(ART_SCALE).setAngle(angle).setDepth(DEPTH.pads);
       this.tweens.add({
-        targets: bar,
-        scaleX: Phaser.Math.FloatBetween(0.4, 0.8),
-        duration: Phaser.Math.Between(500, 1100),
+        targets: pad,
+        angle: angle + 4,
+        y: y + 3,
+        duration: 2400 + i * 300,
+        ease: 'Sine.easeInOut',
         yoyo: true,
         repeat: -1,
       });
-    }
-
-    // Surface ripples that drift left, faster the closer they are.
-    this.ripples = [];
-    for (let i = 0; i < 28; i++) {
-      const y = Phaser.Math.Between(HORIZON_Y + 8, height - 10);
-      const nearness = (y - HORIZON_Y) / (height - HORIZON_Y);
-      const ripple = this.add.rectangle(
-        Phaser.Math.Between(0, width),
-        y,
-        Phaser.Math.Between(16, 30) + nearness * 40,
-        3,
-        TITLE_COLORS.ripple,
-        0.35,
-      );
-      ripple.speed = 8 + nearness * 30;
-      this.ripples.push(ripple);
-    }
+    });
   }
 
-  drawLoon() {
-    makePixelTexture(this, 'pixel-loon', LOON, LOON_PIXEL_SIZE);
-    makePixelTexture(this, 'pixel-baby-loon', BABY_LOON, BABY_PIXEL_SIZE);
+  // The parent with the chick on its back, as one container so they move
+  // together. Flipping the container turns them both around.
+  addLoons() {
+    const parent = this.add.image(0, 0, 'loon-big').setScale(ART_SCALE);
+    const chick = this.add.image(CHICK_ON_BACK.x, CHICK_ON_BACK.y, 'baby-loon-big').setScale(CHICK_SCALE);
+    this.loons = this.add.container(260, LANE_Y, [parent, chick]).setDepth(DEPTH.loon);
+    this.swimDirection = 1;
 
-    const loonY = 420;
-    const adult = this.add.image(0, 0, 'pixel-loon');
-    // The chick rides on the adult's back, just behind the neck.
-    const baby = this.add.image(-32, -4, 'pixel-baby-loon');
-    this.loon = this.add.container(this.scale.width / 2, loonY, [adult, baby]);
-
-    // Bob on the water.
     this.tweens.add({
-      targets: this.loon,
-      y: loonY + 5,
+      targets: this.loons,
+      y: LANE_Y + 4,
       duration: 1100,
       ease: 'Sine.easeInOut',
       yoyo: true,
       repeat: -1,
     });
 
-    // Drift back and forth, turning to face the way it's swimming.
-    this.tweens.add({
-      targets: this.loon,
-      x: { from: 340, to: 500 },
-      duration: 7000,
-      ease: 'Sine.easeInOut',
-      yoyo: true,
-      repeat: -1,
-      onYoyo: () => this.loon.setScale(-1, 1),
-      onRepeat: () => this.loon.setScale(1, 1),
-    });
-
-    // Rings spreading out from where the loon sits in the water.
+    this.wake = this.add
+      .particles(0, 0, 'wake-droplet', {
+        lifespan: { min: 700, max: 1300 },
+        speed: { min: 15, max: 45 },
+        angle: { onEmit: () => (this.swimDirection > 0 ? 180 : 0) + Phaser.Math.Between(-35, 35) },
+        scale: { start: 1.5, end: 0.5 },
+        alpha: { start: 0.8, end: 0 },
+        emitting: false,
+      })
+      .setDepth(DEPTH.wake);
     this.time.addEvent({
-      delay: 1300,
+      delay: 60,
       loop: true,
       callback: () => {
-        const ring = this.add
-          .ellipse(this.loon.x, loonY + 50, 220, 22)
-          .setStrokeStyle(3, TITLE_COLORS.ripple, 0.6);
-        this.children.moveBelow(ring, this.loon);
-        this.tweens.add({
-          targets: ring,
-          scaleX: 1.8,
-          scaleY: 1.8,
-          alpha: 0,
-          duration: 2200,
-          onComplete: () => ring.destroy(),
-        });
+        const tailX = this.loons.x + PARENT_TAIL * this.swimDirection;
+        this.wake.emitParticleAt(tailX, this.loons.y + Phaser.Math.Between(-25, 25), 1);
       },
     });
   }
 
-  // Clumps of reeds in the corners, swaying from their bases.
-  drawReeds() {
+  // A reed clump in each corner, partly off-screen, swaying in the breeze.
+  // Different turns and flips keep the four from looking identical.
+  addReeds() {
     const { width, height } = this.scale;
-    const clumps = [
-      [20, 170],
-      [width - 170, width - 20],
+    const corners = [
+      [30, 20, 0, false],
+      [width - 20, 40, 90, true],
+      [40, height - 10, 200, true],
+      [width - 30, height - 20, 290, false],
     ];
-    clumps.forEach(([from, to]) => {
-      for (let x = from; x < to; x += Phaser.Math.Between(8, 16)) {
-        const reed = this.add
-          .rectangle(x, height, 6, Phaser.Math.Between(60, 150), Phaser.Math.RND.pick(TITLE_COLORS.reeds))
-          .setOrigin(0.5, 1);
-        this.tweens.add({
-          targets: reed,
-          angle: { from: -3, to: 3 },
-          duration: Phaser.Math.Between(1400, 2200),
-          delay: Phaser.Math.Between(0, 1000),
-          ease: 'Sine.easeInOut',
-          yoyo: true,
-          repeat: -1,
-        });
-      }
+    corners.forEach(([x, y, angle, flip], i) => {
+      const clump = this.add
+        .image(x, y, 'reeds-clump')
+        .setScale(ART_SCALE)
+        .setAngle(angle)
+        .setFlipX(flip)
+        .setDepth(DEPTH.reeds);
+      this.tweens.add({
+        targets: clump,
+        angle: angle + 3,
+        scale: ART_SCALE * 1.03,
+        duration: 1800 + i * 250,
+        delay: i * 400,
+        ease: 'Sine.easeInOut',
+        yoyo: true,
+        repeat: -1,
+      });
     });
+  }
+
+  // Fireflies blinking and wandering, mostly around the reeds.
+  addFireflies() {
+    const { width, height } = this.scale;
+    const homes = [[90, 80], [width - 90, 90], [100, height - 80], [width - 100, height - 80]];
+    for (let i = 0; i < 16; i++) {
+      const [hx, hy] = homes[i % homes.length];
+      const firefly = this.add
+        .rectangle(hx + Phaser.Math.Between(-90, 90), hy + Phaser.Math.Between(-70, 70), 4, 4, TITLE_COLORS.firefly)
+        .setDepth(DEPTH.fireflies);
+      this.tweens.add({
+        targets: firefly,
+        alpha: 0.1,
+        duration: Phaser.Math.Between(500, 1300),
+        delay: Phaser.Math.Between(0, 1200),
+        yoyo: true,
+        repeat: -1,
+      });
+      const wander = () => {
+        this.tweens.add({
+          targets: firefly,
+          x: hx + Phaser.Math.Between(-110, 110),
+          y: hy + Phaser.Math.Between(-80, 80),
+          duration: Phaser.Math.Between(1800, 3500),
+          ease: 'Sine.easeInOut',
+          onComplete: wander,
+        });
+      };
+      wander();
+    }
   }
 
   // "LOON MAZE" with each letter bobbing in a wave.
   drawTitle() {
     const letters = [...'LOON MAZE'].map((char) =>
-      this.add.text(0, 0, char, { ...TEXT_STYLE, fontSize: '64px', color: TITLE_COLORS.title }),
+      this.add
+        .text(0, 0, char, { ...TEXT_STYLE, fontSize: '64px', color: TITLE_COLORS.title })
+        .setDepth(DEPTH.text),
     );
     const totalWidth = letters.reduce((sum, letter) => sum + letter.width, 0);
     let x = (this.scale.width - totalWidth) / 2;
     letters.forEach((letter, i) => {
-      letter.setPosition(x, 150).setOrigin(0, 0.5);
+      letter.setPosition(x, 140).setOrigin(0, 0.5);
       x += letter.width;
       this.tweens.add({
         targets: letter,
-        y: 136,
+        y: 126,
         duration: 700,
         delay: i * 90,
         ease: 'Sine.easeInOut',
@@ -216,7 +258,8 @@ export default class TitleScene extends Phaser.Scene {
         ...TEXT_STYLE,
         fontSize: '22px',
       })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(DEPTH.text);
 
     // Classic arcade blink.
     this.time.addEvent({
@@ -227,13 +270,19 @@ export default class TitleScene extends Phaser.Scene {
 
     this.add
       .text(width / 2, 578, 'ARROWS: SWIM   M: MUTE', { ...TEXT_STYLE, fontSize: '12px', strokeThickness: 4 })
-      .setOrigin(0.5);
+      .setOrigin(0.5)
+      .setDepth(DEPTH.text);
   }
 
   update(time, delta) {
-    for (const ripple of this.ripples) {
-      ripple.x -= (ripple.speed * delta) / 1000;
-      if (ripple.x < -ripple.width) ripple.x = this.scale.width + ripple.width;
+    this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
+    this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
+
+    // Swim across, turning around once off-screen.
+    this.loons.x += (this.swimDirection * TITLE_LOON_SPEED * delta) / 1000;
+    if (this.loons.x > LANE_ENDS.right || this.loons.x < LANE_ENDS.left) {
+      this.swimDirection *= -1;
+      this.loons.setScale(this.swimDirection, 1);
     }
 
     if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {

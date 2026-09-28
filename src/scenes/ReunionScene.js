@@ -9,13 +9,16 @@ import {
   FONT_FAMILY,
   TITLE_COLORS,
 } from '../config.js';
-import { BABY_LOON_BIG, HEART, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
+import { HEART, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import loonBigUrl from '../assets/loon-big.png';
+import babyLoonBigUrl from '../assets/baby-loon-big.png';
 import HpBar from '../ui/HpBar.js';
 
 // Screen pixels per art pixel for the big cutscene sprites.
 const BIG_PIXEL = 4;
+// The chick is drawn a size down so it's about a third of its parent's length.
+const CHICK_PIXEL = 3;
 
 // Where things sit on the parent sprite, relative to its center, in screen
 // pixels at BIG_PIXEL scale (measured from src/assets/loon-big.png).
@@ -42,6 +45,7 @@ export default class ReunionScene extends Phaser.Scene {
 
   preload() {
     this.load.image('loon-big', loonBigUrl);
+    this.load.image('baby-loon-big', babyLoonBigUrl);
   }
 
   create(data) {
@@ -53,8 +57,9 @@ export default class ReunionScene extends Phaser.Scene {
     this.nextWakeTime = 0;
     this.audio = getLakeAudio(this);
 
-    this.textures.get('loon-big').setFilter(Phaser.Textures.FilterMode.NEAREST);
-    makePixelTexture(this, 'baby-loon-big', BABY_LOON_BIG, BIG_PIXEL);
+    for (const key of ['loon-big', 'baby-loon-big']) {
+      this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
+    }
     makePixelTexture(this, 'heart', HEART, BIG_PIXEL);
     makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
@@ -77,7 +82,7 @@ export default class ReunionScene extends Phaser.Scene {
     });
 
     this.parent = this.add.image(-300, PARENT_REST.y, 'loon-big').setScale(BIG_PIXEL);
-    this.baby = this.add.image(width + 100, PARENT_REST.y - 30, 'baby-loon-big').setFlipX(true);
+    this.baby = this.add.image(width + 100, PARENT_REST.y - 30, 'baby-loon-big').setScale(CHICK_PIXEL).setFlipX(true);
 
     this.hpBar = new HpBar(this, 206, 490, {
       width: 300,
@@ -146,7 +151,7 @@ export default class ReunionScene extends Phaser.Scene {
     });
     this.tweens.add({
       targets: this.baby,
-      scale: { from: 1, to: 1.35 },
+      scale: { from: CHICK_PIXEL, to: CHICK_PIXEL * 1.35 },
       duration: 350,
       ease: 'Sine.easeOut',
       yoyo: true,
