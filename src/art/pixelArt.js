@@ -101,8 +101,10 @@ export const BABY_LOON_TOP = {
 
 // Cutscene art, drawn at the same chunky scale as src/assets/loon-big.png (the
 // parent, converted from art-source/loon-top.webp by tools/pixelize.py).
-// A round, fluffy chick facing right: dark cap, pale throat and belly, and
-// faint tufts of down ('k') around the edge.
+// A round, fluffy chick facing right: sooty down with a dark cap, a small
+// paler chin under the bill and a paler belly, and faint tufts of down ('k')
+// around the edge. The pale shades stay muted so they don't read as white
+// patches at 4x scale.
 export const BABY_LOON_BIG = {
   palette: {
     K: '#161413',
@@ -110,7 +112,7 @@ export const BABY_LOON_BIG = {
     D: '#3a3532',
     G: '#5a534f',
     L: '#847c76',
-    W: '#cec7bf',
+    W: '#a9a098',
     b: '#787a7e',
     R: '#aa1e1e',
   },
@@ -125,9 +127,9 @@ export const BABY_LOON_BIG = {
     '.KDDDGDGGDGGGGDGDDDDDDDGGRRGGDK.',
     'kKDGDDDDGGDGDGDDGGDGGDDDGDGGGbbK',
     'KLDDDDDDDDDDDLLDDDLDDDDDLDDDDbK.',
-    'KDDDDDDDDDDDDDDLDDDDWWWWLWWWDK..',
-    'KDDDDDDDLDDDDDDDDDDDWLLLWWWWDK..',
-    'KDDDDDDDDDDDDDDDDLLDWWWWWWWWK...',
+    'KDDDDDDDDDDDDDDLDDDDDGDDDLLLDK..',
+    'KDDDDDDDLDDDDDDDDDDDDDDDLLWLDK..',
+    'KDDDDDDDDDDDDDDDDLLDDDGDDLLDK...',
     '.KLDDDLDDDDDDDDDDLDDDDDDDDDKk...',
     '.KDDDLDDDDDDDDDDDDDDDKKKKKK.....',
     '..KDDDDLLLWLWLLWWWWDK...........',
