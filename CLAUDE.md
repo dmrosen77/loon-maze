@@ -32,6 +32,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 
 - The Arcade collider callback fires every frame while the loon pushes into reeds. Throttle anything triggered from it (see `bump()`).
 - `body.deltaX()`/`deltaY()` are measured before collision separation, so they report movement even when the loon is blocked. To detect real movement, compare the game object's position with the previous frame's (see `paddle()`).
+- All text uses the Press Start 2P arcade font (`FONT_FAMILY` in config), bundled from `@fontsource/press-start-2p`. Phaser renders text with whatever font is loaded at that moment, so `main.js` waits for `document.fonts.load()` before creating the game. Keep that if the startup code changes.
 - Browsers block audio until the user interacts. `audio.js` starts on the first keydown or pointerdown.
 
 ## Testing in the browser pane

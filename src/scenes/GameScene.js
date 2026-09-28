@@ -14,6 +14,7 @@ import {
   LOON_HEIGHT,
   BABY_WIDTH,
   BABY_HEIGHT,
+  FONT_FAMILY,
   COLORS,
 } from '../config.js';
 import handMadeMaze from '../mazes/maze1.js';
@@ -21,11 +22,12 @@ import generateMaze from '../mazes/generateMaze.js';
 import { getLakeAudio } from '../audio.js';
 
 const TEXT_STYLE = {
-  fontFamily: 'sans-serif',
+  fontFamily: `"${FONT_FAMILY}"`,
   color: '#ffffff',
   stroke: '#000000',
   strokeThickness: 6,
   align: 'center',
+  lineSpacing: 16,
 };
 
 // Each level's maze is a little bigger than the last, up to the max size.
@@ -110,13 +112,13 @@ export default class GameScene extends Phaser.Scene {
   // A corner label, plus a big banner that fades out at the start of the level.
   showLevelText() {
     this.add
-      .text(12, 8, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '22px', strokeThickness: 4 })
+      .text(12, 8, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setScrollFactor(0)
       .setDepth(10);
 
     const { width, height } = this.scale;
     const banner = this.add
-      .text(width / 2, height / 2, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '56px' })
+      .text(width / 2, height / 2, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '48px' })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(10);
@@ -147,7 +149,7 @@ export default class GameScene extends Phaser.Scene {
     this.add
       .text(width / 2, height / 2, `Reunited!\nLevel ${this.level} complete`, {
         ...TEXT_STYLE,
-        fontSize: '40px',
+        fontSize: '32px',
       })
       .setOrigin(0.5)
       .setScrollFactor(0)

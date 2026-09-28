@@ -36,6 +36,9 @@ export const VOLUME = {
   sfx: 0.8,
 };
 
+// Used for all in-game text. Loaded from the @fontsource/press-start-2p package.
+export const FONT_FAMILY = 'Press Start 2P';
+
 export const COLORS = {
   water: '#2a6f97',
   reeds: 0x4c8c2b,
