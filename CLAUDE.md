@@ -17,7 +17,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - `src/config.js`: every tuning value (sizes, speeds, level curve, volumes, colors). Put new tunables here, not inline.
 - `src/scenes/TitleScene.js`: animated night-lake title screen with title music; Enter starts level 1
 - `src/scenes/GameScene.js`: gameplay. Builds the maze, handles movement, collisions, reunion, and level advance.
-- `src/art/pixelArt.js`: pixel art as character grids (same idea as mazes) plus `makePixelTexture()` to turn a grid into a texture. It holds the side-view loon for the title screen and the top-down loon (two paddling frames) and chick for gameplay. Top-down art faces right, and the game rotates it. Reed wall tiles are generated from fixed seeds (`makeReedTextures`) rather than hand-drawn, and the game places them at random rotations.
+- `src/art/pixelArt.js`: pixel art as character grids (same idea as mazes) plus `makePixelTexture()` to turn a grid into a texture. It holds the side-view loon for the title screen and the top-down loon (two paddling frames) and chick for gameplay. Top-down art faces right, and the game rotates it. Reed wall tiles and the water tile are generated from fixed seeds (`makeReedTextures`, `makeWaterTexture`) rather than hand-drawn. The game places reeds at random rotations, and the water is a drifting TileSprite.
 - `art-source/`: reference images the pixel art is based on, such as AI-generated concepts on a magenta background. They aren't loaded by the game. Automatic downscaling of these gave muddy results at sprite size, so the grids are redrawn by hand using them as reference.
 - `src/mazes/generateMaze.js`: recursive-backtracker generator; puts the baby on the tile farthest from the start
 - `src/mazes/maze1.js`: hand-made maze, used when `PROCEDURAL_MAZE` is false
@@ -29,6 +29,8 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - Generated maze sizes must be odd (level 1 sizes odd, growth even).
 - A new level is `this.scene.restart({ level })`, and `create(data)` rebuilds everything. Anything that must persist across levels (like audio) lives outside the scene.
 - The loon's collision box is a square (`LOON_BODY_SIZE`) that is smaller than its sprite, because Arcade bodies don't rotate with the sprite. Its head pokes into the reeds a little by design.
+- Layering in GameScene comes from creation order: water, wake particles, reeds, chick, loon, then text (depth 10). The wake sits under the reeds so droplets don't show on top of them.
+- Wake particles are emitted manually with `emitParticleAt()`, not by moving the emitter. In Phaser 4, moving an emitter drags its live particles along with it.
 - Mazes larger than the view scroll with a camera that follows the loon. Smaller mazes are centered.
 - Import Phaser as `import * as Phaser from 'phaser'`.
 

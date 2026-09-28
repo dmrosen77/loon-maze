@@ -163,6 +163,38 @@ export function makeReedTextures(scene, tileSize, pixelSize) {
   }
 }
 
+// A seamless tile of lake water: short ripple dashes and the odd glint on a
+// blue base. Dashes wrap around the edges so the tile repeats without seams.
+const WATER_PALETTE = {
+  b: '#2a6f97', // base water (matches the background color)
+  d: '#245f84', // ripple troughs
+  l: '#3a84ae', // ripple crests
+  w: '#8ec5e0', // glints
+};
+
+function waterTileRows(rng, size) {
+  const grid = Array.from({ length: size }, () => Array(size).fill('b'));
+  const dash = (char, count, minLength, maxLength) => {
+    for (let i = 0; i < count; i++) {
+      const x = rng.between(0, size - 1);
+      const y = rng.between(0, size - 1);
+      const length = rng.between(minLength, maxLength);
+      for (let j = 0; j < length; j++) grid[y][(x + j) % size] = char;
+    }
+  };
+  dash('d', 26, 3, 7);
+  dash('l', 18, 2, 5);
+  dash('w', 5, 1, 1);
+  return grid.map((row) => row.join(''));
+}
+
+// Makes the 'water' texture: one tile, repeated across the lake by a TileSprite.
+export function makeWaterTexture(scene, tileSize, pixelSize) {
+  const rng = new Phaser.Math.RandomDataGenerator(['water']);
+  const size = (tileSize * 2) / pixelSize; // Two maze tiles wide, so it repeats less often.
+  makePixelTexture(scene, 'water', { palette: WATER_PALETTE, rows: waterTileRows(rng, size) }, pixelSize);
+}
+
 // Draws the art into a texture. Nearest-neighbor filtering keeps the pixels
 // crisp when a sprite is rotated.
 export function makePixelTexture(scene, key, art, pixelSize) {

@@ -13,6 +13,9 @@ import {
   LOON_TURN_SPEED,
   LOON_BODY_SIZE,
   SPRITE_PIXEL_SIZE,
+  WATER_DRIFT,
+  WAKE_INTERVAL_MS,
+  WAKE_SPLASH,
   FONT_FAMILY,
 } from '../config.js';
 import handMadeMaze from '../mazes/maze1.js';
@@ -24,6 +27,7 @@ import {
   REED_TILE_VARIANTS,
   makePixelTexture,
   makeReedTextures,
+  makeWaterTexture,
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 
@@ -57,6 +61,7 @@ export default class GameScene extends Phaser.Scene {
     this.reunited = false;
     this.lastBumpTime = 0;
     this.nextStrokeTime = 0;
+    this.nextWakeTime = 0;
     this.audio = getLakeAudio(this);
     this.audio?.playMusic('lake');
     this.cameras.main.fadeIn(400, 0, 0, 0);
@@ -66,6 +71,20 @@ export default class GameScene extends Phaser.Scene {
     const mazeHeight = maze.length * TILE_SIZE;
 
     this.createSprites();
+
+    // The lake: the maze, or the whole screen if the maze is smaller.
+    // Drawing order sets layering: water, then wake, then reeds, then loons.
+    const camera = this.cameras.main;
+    const lakeWidth = Math.max(mazeWidth, camera.width);
+    const lakeHeight = Math.max(mazeHeight, camera.height);
+    const lake = new Phaser.Geom.Rectangle(
+      (mazeWidth - lakeWidth) / 2,
+      (mazeHeight - lakeHeight) / 2,
+      lakeWidth,
+      lakeHeight,
+    );
+    this.water = this.add.tileSprite(lake.x, lake.y, lake.width, lake.height, 'water').setOrigin(0);
+    this.createWake();
 
     const reeds = this.physics.add.staticGroup();
     let loonStart;
@@ -107,7 +126,8 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.collider(this.loon, reeds, this.bump, null, this);
     this.physics.add.overlap(this.loon, this.baby, this.reunite, null, this);
 
-    this.setUpCamera(mazeWidth, mazeHeight);
+    camera.setBounds(lake.x, lake.y, lake.width, lake.height);
+    camera.startFollow(this.loon, true);
     this.showLevelText();
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -120,6 +140,8 @@ export default class GameScene extends Phaser.Scene {
     makePixelTexture(this, 'loon-top-feet-in', LOON_TOP_FEET_IN, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'baby-loon-top', BABY_LOON_TOP, SPRITE_PIXEL_SIZE);
     makeReedTextures(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
+    makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
+    makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
     if (!this.anims.exists('loon-paddle')) {
       this.anims.create({
         key: 'loon-paddle',
@@ -130,18 +152,29 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Mazes smaller than the screen sit centered; bigger ones scroll with the loon.
-  setUpCamera(mazeWidth, mazeHeight) {
-    const camera = this.cameras.main;
-    const boundsWidth = Math.max(mazeWidth, camera.width);
-    const boundsHeight = Math.max(mazeHeight, camera.height);
-    camera.setBounds(
-      (mazeWidth - boundsWidth) / 2,
-      (mazeHeight - boundsHeight) / 2,
-      boundsWidth,
-      boundsHeight,
-    );
-    camera.startFollow(this.loon, true);
+  // Droplets in the loon's wake. They're emitted by hand from update() and
+  // paddle(), always heading away from the way the loon is facing.
+  createWake() {
+    this.wake = this.add.particles(0, 0, 'wake-droplet', {
+      lifespan: { min: 500, max: 1000 },
+      speed: { min: 12, max: 40 },
+      angle: { onEmit: () => this.loon.angle + 180 + Phaser.Math.Between(-40, 40) },
+      scale: { start: 1, end: 0.5 },
+      alpha: { start: 0.9, end: 0 },
+      emitting: false,
+    });
+  }
+
+  // A point behind the loon's center (and optionally to one side), following
+  // its rotation.
+  pointBehindLoon(distance, sideways = 0) {
+    const { x, y, rotation } = this.loon;
+    const cos = Math.cos(rotation);
+    const sin = Math.sin(rotation);
+    return {
+      x: x - cos * distance - sin * sideways,
+      y: y - sin * distance + cos * sideways,
+    };
   }
 
   // A corner label, plus a big banner that fades out at the start of the level.
@@ -201,6 +234,10 @@ export default class GameScene extends Phaser.Scene {
       this.audio?.toggleMute();
     }
 
+    // Whole pixels only, so the pixel art doesn't shimmer as it drifts.
+    this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
+    this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
+
     if (this.reunited) return;
 
     const { left, right, up, down } = this.cursors;
@@ -214,7 +251,22 @@ export default class GameScene extends Phaser.Scene {
     this.loon.body.setVelocity(velocity.x, velocity.y);
 
     this.animateLoon(velocity, delta);
+
+    // Compare against last frame's position, which is after the reeds pushed
+    // the loon back (the body's own delta is measured before that happens),
+    // so holding a key while pressed against the reeds doesn't count.
+    const { x, y } = this.loon;
+    const moving = Math.abs(x - this.lastLoonX) + Math.abs(y - this.lastLoonY) > 0.1;
+    this.lastLoonX = x;
+    this.lastLoonY = y;
+    if (!moving) return;
+
     this.paddle(time);
+    if (time >= this.nextWakeTime) {
+      const tail = this.pointBehindLoon(22);
+      this.wake.emitParticleAt(tail.x, tail.y, 2);
+      this.nextWakeTime = time + WAKE_INTERVAL_MS;
+    }
   }
 
   // Paddle while a direction is held, and turn smoothly to face it.
@@ -233,18 +285,14 @@ export default class GameScene extends Phaser.Scene {
     );
   }
 
-  // A stroke sound every LOON_STROKE_MS while the loon is actually moving
-  // (holding a key while pressed against the reeds doesn't count).
+  // While swimming: a stroke sound and a splash at each foot every LOON_STROKE_MS.
   paddle(time) {
-    // Compare against last frame's position, which is after the reeds pushed
-    // the loon back (the body's own delta is measured before that happens).
-    const { x, y } = this.loon;
-    const moving = Math.abs(x - this.lastLoonX) + Math.abs(y - this.lastLoonY) > 0.1;
-    this.lastLoonX = x;
-    this.lastLoonY = y;
-    if (moving && time >= this.nextStrokeTime) {
-      this.audio?.paddle();
-      this.nextStrokeTime = time + LOON_STROKE_MS;
+    if (time < this.nextStrokeTime) return;
+    this.audio?.paddle();
+    for (const side of [-1, 1]) {
+      const foot = this.pointBehindLoon(20, side * 8);
+      this.wake.emitParticleAt(foot.x, foot.y, WAKE_SPLASH);
     }
+    this.nextStrokeTime = time + LOON_STROKE_MS;
   }
 }

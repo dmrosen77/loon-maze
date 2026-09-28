@@ -32,6 +32,14 @@ export const LOON_BODY_SIZE = 24;
 // Screen pixels per art pixel for the in-game sprites (see src/art/pixelArt.js).
 export const SPRITE_PIXEL_SIZE = 2;
 
+// How fast the water texture drifts, in pixels per second.
+export const WATER_DRIFT = { x: 6, y: 2 };
+
+// Wake behind the swimming loon: two droplets every WAKE_INTERVAL_MS, plus a
+// splash of WAKE_SPLASH droplets at each foot on every paddle stroke.
+export const WAKE_INTERVAL_MS = 45;
+export const WAKE_SPLASH = 3;
+
 // 0 = silent, 1 = full. Press M in game to mute everything.
 export const VOLUME = {
   master: 0.8,
