@@ -13,6 +13,8 @@ import {
   LOON_TURN_SPEED,
   LOON_BODY_SIZE,
   SPRITE_PIXEL_SIZE,
+  REED_SWAY_SPEED,
+  REED_GUST_SPACING,
   WATER_DRIFT,
   WAKE_INTERVAL_MS,
   WAKE_SPLASH,
@@ -25,8 +27,10 @@ import {
   LOON_TOP_FEET_IN,
   BABY_LOON_TOP,
   REED_TILE_VARIANTS,
+  REED_SWAY_FRAMES,
+  WATER_SIDE,
+  reedTexture,
   makePixelTexture,
-  makeReedTextures,
   makeWaterTexture,
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
@@ -87,6 +91,8 @@ export default class GameScene extends Phaser.Scene {
     this.createWake();
 
     const reeds = this.physics.add.staticGroup();
+    this.reedTiles = [];
+    this.time.addEvent({ delay: 100, loop: true, callback: () => this.swayReeds() });
     let loonStart;
     let babyStart;
 
@@ -95,11 +101,7 @@ export default class GameScene extends Phaser.Scene {
         const x = colIndex * TILE_SIZE + TILE_SIZE / 2;
         const y = rowIndex * TILE_SIZE + TILE_SIZE / 2;
         if (cell === '#') {
-          // A random variation at a random quarter turn, so the walls don't
-          // look like a repeating pattern.
-          const reed = this.add.image(x, y, `reeds-${Phaser.Math.Between(0, REED_TILE_VARIANTS - 1)}`);
-          reed.setAngle(90 * Phaser.Math.Between(0, 3));
-          reeds.add(reed);
+          this.addReedTile(reeds, maze, colIndex, rowIndex, x, y);
         } else if (cell === 'P') {
           loonStart = { x, y };
         } else if (cell === 'B') {
@@ -139,7 +141,6 @@ export default class GameScene extends Phaser.Scene {
     makePixelTexture(this, 'loon-top-feet-out', LOON_TOP_FEET_OUT, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'loon-top-feet-in', LOON_TOP_FEET_IN, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'baby-loon-top', BABY_LOON_TOP, SPRITE_PIXEL_SIZE);
-    makeReedTextures(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
     makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
     if (!this.anims.exists('loon-paddle')) {
@@ -149,6 +150,43 @@ export default class GameScene extends Phaser.Scene {
         frameRate: 2000 / LOON_STROKE_MS, // One kick per paddling sound.
         repeat: -1,
       });
+    }
+  }
+
+  // A random variation of reeds, with frayed edges on the sides that face
+  // water. All its sway frames are made up front so animating never stalls.
+  addReedTile(reeds, maze, col, row, x, y) {
+    const isWater = (c, r) => maze[r]?.[c] === undefined || maze[r][c] !== '#';
+    const waterSides =
+      (isWater(col, row - 1) ? WATER_SIDE.N : 0) |
+      (isWater(col + 1, row) ? WATER_SIDE.E : 0) |
+      (isWater(col, row + 1) ? WATER_SIDE.S : 0) |
+      (isWater(col - 1, row) ? WATER_SIDE.W : 0);
+    const variant = Phaser.Math.Between(0, REED_TILE_VARIANTS - 1);
+    const frames = [];
+    for (let frame = 0; frame < REED_SWAY_FRAMES; frame++) {
+      frames.push(reedTexture(this, variant, waterSides, frame, TILE_SIZE, SPRITE_PIXEL_SIZE));
+    }
+
+    const upright = 1;
+    const image = this.add.image(x, y, frames[upright]);
+    reeds.add(image);
+    image.body.setSize(TILE_SIZE, TILE_SIZE); // The image includes overhang; walls don't.
+    this.reedTiles.push({ image, frames, frame: upright });
+  }
+
+  // Gusts of wind sweep diagonally across the lake, bending each tile's
+  // blades one way, then back upright, then the other way.
+  swayReeds() {
+    const time = this.time.now / 1000;
+    for (const tile of this.reedTiles) {
+      const phase = ((tile.image.x + tile.image.y) / REED_GUST_SPACING) * Math.PI * 2;
+      const wind = Math.sin(time * REED_SWAY_SPEED - phase);
+      const frame = wind > 0.4 ? 2 : wind < -0.4 ? 0 : 1;
+      if (frame !== tile.frame) {
+        tile.frame = frame;
+        tile.image.setTexture(tile.frames[frame]);
+      }
     }
   }
 

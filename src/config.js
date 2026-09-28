@@ -32,6 +32,11 @@ export const LOON_BODY_SIZE = 24;
 // Screen pixels per art pixel for the in-game sprites (see src/art/pixelArt.js).
 export const SPRITE_PIXEL_SIZE = 2;
 
+// Gusts of wind sweeping across the reeds: how fast they pass (radians per
+// second) and how far apart they are (pixels).
+export const REED_SWAY_SPEED = 1.8;
+export const REED_GUST_SPACING = 360;
+
 // How fast the water texture drifts, in pixels per second.
 export const WATER_DRIFT = { x: 6, y: 2 };
 

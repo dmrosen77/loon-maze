@@ -100,9 +100,19 @@ export const BABY_LOON_TOP = {
 };
 
 // Reed tiles for the maze walls, seen from above. Unlike the loon these are
-// generated rather than hand-drawn, so there are several variations. Each one
-// uses a fixed seed, so it comes out the same every time.
+// generated rather than hand-drawn. Each tile is built from:
+// - a variant (which fixed seed lays out its clumps and cattails),
+// - which sides face open water (those edges fray, and blades reach out
+//   over the water, so walls don't look like hard-edged blocks),
+// - a sway frame (blades bent one way, upright, or bent the other way).
+// The same variant and sides always give the same tile, and the sway frames
+// only bend the blades, so switching frames animates them in the wind.
 export const REED_TILE_VARIANTS = 4;
+export const REED_SWAY_FRAMES = 3;
+export const WATER_SIDE = { N: 1, E: 2, S: 4, W: 8 };
+
+// Art pixels of overhang around each tile, for blades reaching over the water.
+const REED_MARGIN = 2;
 
 const REED_PALETTE = {
   s: '#142a0f', // deep shadow between stems
@@ -111,31 +121,75 @@ const REED_PALETTE = {
   l: '#6aa83c', // sunlit blade tips
   b: '#6b4226', // cattail head
   B: '#9a643a', // cattail highlight
+  e: 'rgba(31, 61, 23, 0.5)', // mat thinning out at the water's edge
+  f: 'rgba(58, 115, 39, 0.6)', // blades reaching out over the water
+  t: 'rgba(106, 168, 60, 0.6)', // their tips
 };
 
 const EIGHT_DIRECTIONS = [[1, 0], [1, 1], [0, 1], [-1, 1], [-1, 0], [-1, -1], [0, -1], [1, -1]];
 
-function reedTileRows(rng, size) {
-  const grid = Array.from({ length: size }, () => Array(size).fill('d'));
+function reedTileRows(variant, waterSides, sway, size) {
+  // Separate generators, so the fraying and the sway can't change the layout.
+  const rng = new Phaser.Math.RandomDataGenerator([`reeds-${variant}`]);
+  const frayRng = new Phaser.Math.RandomDataGenerator([`reeds-${variant}-${waterSides}`]);
+
+  const full = size + REED_MARGIN * 2;
+  const lo = REED_MARGIN;
+  const hi = REED_MARGIN + size - 1;
+  const inMat = (x, y) => x >= lo && x <= hi && y >= lo && y <= hi;
+  // Overhang is only drawn where it's over open water, never over a
+  // neighboring reed tile.
+  const overWater = (x, y) =>
+    x >= 0 && y >= 0 && x < full && y < full &&
+    (y >= lo || waterSides & WATER_SIDE.N) &&
+    (y <= hi || waterSides & WATER_SIDE.S) &&
+    (x >= lo || waterSides & WATER_SIDE.W) &&
+    (x <= hi || waterSides & WATER_SIDE.E);
+
+  const grid = Array.from({ length: full }, (_, y) =>
+    Array.from({ length: full }, (_, x) => (inMat(x, y) ? 'd' : '.')),
+  );
   const set = (x, y, char) => {
-    if (x >= 0 && x < size && y >= 0 && y < size) grid[y][x] = char;
+    if (inMat(x, y)) grid[y][x] = char;
+    else if (overWater(x, y)) grid[y][x] = char === 'l' ? 't' : 'f';
   };
 
   // Speckles of shadow in the mat.
   for (let i = 0; i < (size * size) / 8; i++) {
-    set(rng.between(0, size - 1), rng.between(0, size - 1), 's');
+    set(rng.between(lo, hi), rng.between(lo, hi), 's');
   }
 
-  // Clumps: blades fanning out from a stem, with lighter tips.
+  // Fray the edges that face water: the outermost pixels are mostly gone or
+  // see-through, thinning out over the first three pixels in.
+  const CLEAR = [0.45, 0.15, 0];
+  const THIN = [0.35, 0.35, 0.2];
+  for (let y = lo; y <= hi; y++) {
+    for (let x = lo; x <= hi; x++) {
+      const depth = Math.min(
+        waterSides & WATER_SIDE.N ? y - lo : Infinity,
+        waterSides & WATER_SIDE.S ? hi - y : Infinity,
+        waterSides & WATER_SIDE.W ? x - lo : Infinity,
+        waterSides & WATER_SIDE.E ? hi - x : Infinity,
+      );
+      if (depth > 2) continue;
+      const roll = frayRng.frac();
+      if (roll < CLEAR[depth]) grid[y][x] = '.';
+      else if (roll < CLEAR[depth] + THIN[depth]) grid[y][x] = 'e';
+    }
+  }
+
+  // Clumps: blades fanning out from a stem, with lighter tips. The wind bends
+  // each blade sideways, most at the tip.
   for (let clump = 0; clump < 7; clump++) {
-    const x = rng.between(1, size - 2);
-    const y = rng.between(1, size - 2);
+    const x = rng.between(lo + 1, hi - 1);
+    const y = rng.between(lo + 1, hi - 1);
     const blades = rng.between(3, 5);
     for (let blade = 0; blade < blades; blade++) {
       const [dx, dy] = rng.pick(EIGHT_DIRECTIONS);
       const length = rng.between(3, 6);
       for (let i = 0; i < length; i++) {
-        set(x + dx * i, y + dy * i, i === length - 1 ? 'l' : 'm');
+        const bend = Math.round((sway * 1.5 * i) / (length - 1));
+        set(x + dx * i + bend, y + dy * i, i === length - 1 ? 'l' : 'm');
       }
     }
   }
@@ -143,8 +197,8 @@ function reedTileRows(rng, size) {
   // A cattail head or two, seen end-on.
   const cattails = rng.between(0, 2);
   for (let i = 0; i < cattails; i++) {
-    const x = rng.between(2, size - 4);
-    const y = rng.between(2, size - 4);
+    const x = rng.between(lo + 2, hi - 3);
+    const y = rng.between(lo + 2, hi - 3);
     set(x, y, 'B');
     set(x + 1, y, 'b');
     set(x, y + 1, 'b');
@@ -154,13 +208,16 @@ function reedTileRows(rng, size) {
   return grid.map((row) => row.join(''));
 }
 
-// Makes textures 'reeds-0' to 'reeds-N' sized to fill one maze tile.
-export function makeReedTextures(scene, tileSize, pixelSize) {
-  const size = tileSize / pixelSize;
-  for (let i = 0; i < REED_TILE_VARIANTS; i++) {
-    const rng = new Phaser.Math.RandomDataGenerator([`reeds-${i}`]);
-    makePixelTexture(scene, `reeds-${i}`, { palette: REED_PALETTE, rows: reedTileRows(rng, size) }, pixelSize);
+// Returns the texture key for a reed tile, making the texture on first use.
+// The texture is slightly bigger than a maze tile because of the overhang.
+export function reedTexture(scene, variant, waterSides, frame, tileSize, pixelSize) {
+  const key = `reeds-${variant}-${waterSides}-${frame}`;
+  if (!scene.textures.exists(key)) {
+    const sway = frame - 1; // Frames 0, 1, 2 lean -1, 0, +1.
+    const rows = reedTileRows(variant, waterSides, sway, tileSize / pixelSize);
+    makePixelTexture(scene, key, { palette: REED_PALETTE, rows }, pixelSize);
   }
+  return key;
 }
 
 // A seamless tile of lake water: short ripple dashes and the odd glint on a
