@@ -140,6 +140,33 @@ class LakeAudio {
     return () => clearTimeout(timer);
   }
 
+  // Short falling blip when the loon loses HP.
+  hurt() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(660, t);
+    osc.frequency.exponentialRampToValueAtTime(220, t + 0.18);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.12, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.2);
+    osc.connect(gain).connect(this.sfxBus);
+    osc.start(t);
+    osc.stop(t + 0.22);
+  }
+
+  // Slow falling arpeggio in a minor key for running out of HP.
+  gameOver() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    [12, 7, 3, 0, -5].forEach((semitones, i) => {
+      this.chipNote('square', 440 * 2 ** (semitones / 12), t + i * 0.22, 0.4, 0.1, this.sfxBus);
+      this.chipNote('triangle', 220 * 2 ** (semitones / 12), t + i * 0.22, 0.45, 0.15, this.sfxBus);
+    });
+  }
+
   // Quick rising arpeggio for starting the game.
   startJingle() {
     if (!this.started) return;

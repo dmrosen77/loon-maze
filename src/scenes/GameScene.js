@@ -11,6 +11,8 @@ import {
   LOON_STROKE_MS,
   LOON_TURN_SPEED,
   LOON_BODY_SIZE,
+  LOON_MAX_HP,
+  LOON_INVULNERABLE_MS,
   SPRITE_PIXEL_SIZE,
   REED_SWAY_SPEED,
   REED_GUST_SPACING,
@@ -62,6 +64,11 @@ export default class GameScene extends Phaser.Scene {
   create(data) {
     this.level = data?.level ?? 1;
     this.reunited = false;
+    this.gameOver = false;
+    this.leaving = false;
+    this.enterKey = null;
+    this.hp = LOON_MAX_HP;
+    this.invulnerableUntil = 0;
     this.lastBumpTime = 0;
     this.nextStrokeTime = 0;
     this.nextWakeTime = 0;
@@ -220,6 +227,7 @@ export default class GameScene extends Phaser.Scene {
       .text(12, 8, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setScrollFactor(0)
       .setDepth(10);
+    this.createHpBar();
 
     const { width, height } = this.scale;
     const banner = this.add
@@ -236,16 +244,139 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // The collider fires every frame while pushing into reeds, so only thud
-  // when the loon first hits them, not continuously.
+  // "HP" and one segment per hit point, under the level label.
+  createHpBar() {
+    const x = 12;
+    const y = 34;
+    this.add
+      .text(x, y, 'HP', { ...TEXT_STYLE, fontSize: '12px', strokeThickness: 4 })
+      .setScrollFactor(0)
+      .setDepth(10);
+    this.hpSegments = [];
+    for (let i = 0; i < LOON_MAX_HP; i++) {
+      const segment = this.add
+        .rectangle(x + 34 + i * 20, y + 2, 16, 10, 0x5ad04a)
+        .setOrigin(0)
+        .setStrokeStyle(2, 0x000000)
+        .setScrollFactor(0)
+        .setDepth(10);
+      this.hpSegments.push(segment);
+    }
+  }
+
+  updateHpBar() {
+    this.hpSegments.forEach((segment, i) => {
+      this.tweens.killTweensOf(segment);
+      segment.setAlpha(1);
+      if (i >= this.hp) {
+        segment.setFillStyle(0x3a1d1d); // Lost.
+      } else if (this.hp === 1) {
+        // Last one left: red and pulsing.
+        segment.setFillStyle(0xe8475f);
+        this.tweens.add({ targets: segment, alpha: 0.3, duration: 300, yoyo: true, repeat: -1 });
+      } else {
+        segment.setFillStyle(0x5ad04a);
+      }
+    });
+  }
+
+  // The collider fires every frame while pushing into reeds, so only count a
+  // hit (thud and damage) when the loon first touches them, not continuously.
   bump() {
     const now = this.time.now;
-    if (now - this.lastBumpTime > 200) this.audio?.bump();
+    if (now - this.lastBumpTime > 200) {
+      this.audio?.bump();
+      this.takeDamage(now);
+    }
     this.lastBumpTime = now;
   }
 
+  takeDamage(now) {
+    if (this.reunited || this.gameOver || now < this.invulnerableUntil) return;
+    this.hp -= 1;
+    this.invulnerableUntil = now + LOON_INVULNERABLE_MS;
+    this.updateHpBar();
+    this.cameras.main.shake(120, 0.006);
+
+    if (this.hp <= 0) {
+      this.loseGame();
+      return;
+    }
+
+    this.audio?.hurt();
+    // Flash red, then blink until the loon can be hurt again.
+    this.loon.setTint(0xff6060);
+    this.time.delayedCall(150, () => this.loon.clearTint());
+    this.tweens.add({
+      targets: this.loon,
+      alpha: 0.3,
+      duration: 100,
+      yoyo: true,
+      repeat: Math.floor(LOON_INVULNERABLE_MS / 200) - 1,
+      onComplete: () => this.loon.setAlpha(1),
+    });
+  }
+
+  // Out of HP: the loon sinks out of sight and GAME OVER comes up.
+  // Enter goes back to the title screen.
+  loseGame() {
+    this.gameOver = true;
+    this.loon.body.setVelocity(0, 0);
+    this.loon.stop();
+    this.tweens.killTweensOf(this.loon);
+    this.audio?.gameOver();
+
+    this.loon.setTint(0x6a7a8a);
+    this.tweens.add({
+      targets: this.loon,
+      scale: 0.4,
+      alpha: 0,
+      angle: this.loon.angle + 180,
+      duration: 1400,
+      ease: 'Sine.easeIn',
+    });
+    this.wake.emitParticleAt(this.loon.x, this.loon.y, 16);
+
+    const { width, height } = this.scale;
+    const overlay = this.add
+      .rectangle(0, 0, width, height, 0x000000)
+      .setOrigin(0)
+      .setScrollFactor(0)
+      .setDepth(9)
+      .setAlpha(0);
+    this.tweens.add({ targets: overlay, alpha: 0.6, delay: 600, duration: 800 });
+
+    const lines = [
+      this.add.text(width / 2, height / 2 - 40, 'GAME OVER', { ...TEXT_STYLE, fontSize: '48px', color: '#e8475f' }),
+      this.add.text(width / 2, height / 2 + 20, `You reached level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px' }),
+    ];
+    lines.forEach((line) => {
+      line.setOrigin(0.5).setScrollFactor(0).setDepth(10).setAlpha(0);
+      this.tweens.add({ targets: line, alpha: 1, delay: 1000, duration: 600 });
+    });
+
+    this.time.delayedCall(1600, () => {
+      this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+      const prompt = this.add
+        .text(width / 2, height / 2 + 90, 'PRESS ENTER', { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(10);
+      this.time.addEvent({ delay: 500, loop: true, callback: () => prompt.setVisible(!prompt.visible) });
+    });
+  }
+
+  backToTitle() {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('TitleScene');
+    });
+  }
+
   reunite() {
-    if (this.reunited) return;
+    if (this.reunited || this.gameOver) return;
     this.reunited = true;
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
@@ -269,6 +400,10 @@ export default class GameScene extends Phaser.Scene {
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
     this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
 
+    if (this.gameOver) {
+      if (this.enterKey && Phaser.Input.Keyboard.JustDown(this.enterKey)) this.backToTitle();
+      return;
+    }
     if (this.reunited) return;
 
     const { left, right, up, down } = this.cursors;
