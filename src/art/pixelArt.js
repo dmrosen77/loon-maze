@@ -40,37 +40,51 @@ export const BABY_LOON = {
 
 // In-game sprites, seen from above, facing right (the game rotates them to
 // face the way they swim). Two frames of paddling: feet spread, feet tucked.
-const TOP_LOON_PALETTE = { K: '#141414', W: '#f4f4f4', D: '#2e2e2e', R: '#d32f2f', g: '#6b6b6b', f: '#3a3a3a' };
+// Based on art-source/loon-top.webp, redrawn by hand at game size.
+const TOP_LOON_PALETTE = {
+  K: '#0e0e12', // outline
+  D: '#222430', // dark feathers
+  W: '#eceef0', // spots, breast, collar stripes
+  N: '#1a2648', // navy collar stripes
+  H: '#286040', // green sheen on the crown
+  R: '#be1e1e', // eyes
+  G: '#565e64', // tail, feet, bill
+};
 
-// Columns, left to right: feet, tail, spotted back, white collar, head
+// Columns, left to right: webbed feet, gray tail, two spotted wings split by a
+// dark line down the back, white breast, striped collar, green-crowned head
 // (red eye on each side), pointed bill.
 export const LOON_TOP_FEET_OUT = {
   palette: TOP_LOON_PALETTE,
   rows: [
-    '......DDDDDDD...........',
-    '....DDKKKKKKKDD.........',
-    'ff.DKWKKWKKWKKD....KK...',
-    '..KKKKKKKKKKKKKWKKKRKg..',
-    '..KKWKKWKKWKKKKWKKKKKggg',
-    '..KKKKKKKKKKKKKWKKKRKg..',
-    'ff.DKWKKWKKWKKD....KK...',
-    '....DDKKKKKKKDD.........',
-    '......DDDDDDD...........',
+    '.......KKKKKKKK...........',
+    '......KDDWDDWDDKK.........',
+    'GG..KKDWDDWDDWDDWK..KKK...',
+    '.GGKGDDDWDDWDDWDWWWKDDRK..',
+    '..KGGDKWDDWDDWDDDNNDHHDKG.',
+    '..KGGGKKKKKKKKKKDWWDHHDKGG',
+    '..KGGDKWDDWDDWDDDNNDHHDKG.',
+    '.GGKGDDDWDDWDDWDWWWKDDRK..',
+    'GG..KKDWDDWDDWDDWK..KKK...',
+    '......KDDWDDWDDKK.........',
+    '.......KKKKKKKK...........',
   ],
 };
 
 export const LOON_TOP_FEET_IN = {
   palette: TOP_LOON_PALETTE,
   rows: [
-    '......DDDDDDD...........',
-    '....DDKKKKKKKDD.........',
-    '...DKWKKWKKWKKD....KK...',
-    '.fKKKKKKKKKKKKKWKKKRKg..',
-    '..KKWKKWKKWKKKKWKKKKKggg',
-    '.fKKKKKKKKKKKKKWKKKRKg..',
-    '...DKWKKWKKWKKD....KK...',
-    '....DDKKKKKKKDD.........',
-    '......DDDDDDD...........',
+    '.......KKKKKKKK...........',
+    '......KDDWDDWDDKK.........',
+    '....KKDWDDWDDWDDWK..KKK...',
+    '...KGDDDWDDWDDWDWWWKDDRK..',
+    '.GKGGDKWDDWDDWDDDNNDHHDKG.',
+    '..KGGGKKKKKKKKKKDWWDHHDKGG',
+    '.GKGGDKWDDWDDWDDDNNDHHDKG.',
+    '...KGDDDWDDWDDWDWWWKDDRK..',
+    '....KKDWDDWDDWDDWK..KKK...',
+    '......KDDWDDWDDKK.........',
+    '.......KKKKKKKK...........',
   ],
 };
 

@@ -18,6 +18,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - `src/scenes/TitleScene.js`: animated night-lake title screen with title music; Enter starts level 1
 - `src/scenes/GameScene.js`: gameplay. Builds the maze, handles movement, collisions, reunion, and level advance.
 - `src/art/pixelArt.js`: pixel art as character grids (same idea as mazes) plus `makePixelTexture()` to turn a grid into a texture. It holds the side-view loon for the title screen and the top-down loon (two paddling frames) and chick for gameplay. Top-down art faces right, and the game rotates it.
+- `art-source/`: reference images the pixel art is based on, such as AI-generated concepts on a magenta background. They aren't loaded by the game. Automatic downscaling of these gave muddy results at sprite size, so the grids are redrawn by hand using them as reference.
 - `src/mazes/generateMaze.js`: recursive-backtracker generator; puts the baby on the tile farthest from the start
 - `src/mazes/maze1.js`: hand-made maze, used when `PROCEDURAL_MAZE` is false
 - `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene changes. Scenes call `playMusic('title' | 'lake')`, which crossfades and is a no-op if that music is already playing.
