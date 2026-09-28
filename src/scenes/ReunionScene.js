@@ -84,7 +84,7 @@ export default class ReunionScene extends Phaser.Scene {
     this.parent = this.add.image(-300, PARENT_REST.y, 'loon-big').setScale(BIG_PIXEL);
     this.baby = this.add.image(width + 100, PARENT_REST.y - 30, 'baby-loon-big').setScale(CHICK_PIXEL).setFlipX(true);
 
-    this.hpBar = new HpBar(this, 206, 490, {
+    this.hpBar = new HpBar(this, 250, 490, {
       width: 300,
       height: 16,
       max: LOON_MAX_HP,
@@ -190,7 +190,7 @@ export default class ReunionScene extends Phaser.Scene {
     if (gained > 0) this.audio?.heal();
 
     const popup = this.add
-      .text(this.hpBar.number.x + 110, 490, gained > 0 ? `+${gained} HP` : 'HP FULL', {
+      .text(this.hpBar.right + 16, 490, gained > 0 ? `+${gained} HP` : 'HP FULL', {
         ...TEXT_STYLE,
         fontSize: '16px',
         strokeThickness: 4,

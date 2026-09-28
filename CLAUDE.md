@@ -24,7 +24,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Mos
 - `art-source/`: reference images the pixel art is based on, such as AI-generated concepts on a magenta background. They aren't loaded by the game. At small in-game sprite size, downscaling gave muddy results, so those grids are redrawn by hand using them as reference. Large cutscene sprites convert well with `tools/pixelize.py`.
 - `src/mazes/generateMaze.js`: recursive-backtracker generator; puts the baby on the tile farthest from the start
 - `src/mazes/maze1.js`: hand-made maze, used when `PROCEDURAL_MAZE` is false
-- `src/ui/HpBar.js`: the HP bar used in gameplay and the reunion. Losses snap down and the lost chunk drains after a moment. Gains grow back with a count-up. It turns amber at 40% and red and pulsing at 20%. Fills use `scaleX`, not `width`, because Phaser rectangles don't reliably redraw when `width` changes.
+- `src/ui/HpBar.js`: the HP bar used in gameplay and the reunion. Losses snap down and the lost chunk drains after a moment. Gains grow back smoothly. It turns amber at 40% and red and pulsing at 20%. Fills use `scaleX`, not `width`, because Phaser rectangles don't reliably redraw when `width` changes.
 - `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene changes. Scenes call `playMusic('title' | 'lake')`, which crossfades and is a no-op if that music is already playing. `stopMusic()` fades to silence, which the game-over cutscene uses.
 
 ## How things work

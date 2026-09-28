@@ -10,15 +10,15 @@ const COLORS = {
   critical: 0xe8475f,
 };
 
-// A health bar: "HP", the bar, and "35/50". Losing HP snaps the bar down and
-// leaves the lost chunk showing briefly before it drains. Gaining HP grows the
-// bar back smoothly while the number counts up.
+// A health bar: "HP" and the bar. Losing HP snaps the bar down and leaves the
+// lost chunk showing briefly before it drains. Gaining HP grows the bar back
+// smoothly.
 export default class HpBar {
   constructor(scene, x, y, { width, height, max, value, fontSize = 12, fixed = true }) {
     this.scene = scene;
     this.max = max;
     this.value = value;
-    this.shown = value; // The number currently displayed while it counts up.
+    this.shown = value; // What the bar currently shows while it grows back.
     this.width = width;
 
     const textStyle = {
@@ -36,9 +36,9 @@ export default class HpBar {
     this.fill = scene.add.rectangle(barX, y, width, height, COLORS.healthy).setOrigin(0, 0.5);
     this.lost.scaleX = this.fraction(value);
     this.fill.scaleX = this.fraction(value);
-    this.number = scene.add.text(barX + width + 8, y, '', textStyle).setOrigin(0, 0.5);
+    this.right = barX + width; // For placing things just past the bar.
 
-    this.parts = [label, frame, this.lost, this.fill, this.number];
+    this.parts = [label, frame, this.lost, this.fill];
     if (fixed) this.parts.forEach((part) => part.setScrollFactor(0).setDepth(10));
     this.refresh();
   }
@@ -62,7 +62,7 @@ export default class HpBar {
       this.shown = this.value;
       this.refresh();
     } else if (this.value > previous) {
-      // Grow back, counting up.
+      // Grow back.
       const counter = { value: this.shown };
       tweens.add({
         targets: counter,
@@ -70,7 +70,7 @@ export default class HpBar {
         duration: 900,
         ease: 'Sine.easeOut',
         onUpdate: () => {
-          this.shown = Math.round(counter.value);
+          this.shown = counter.value;
           this.fill.scaleX = this.fraction(counter.value);
           this.lost.scaleX = this.fill.scaleX;
           this.refresh();
@@ -79,12 +79,11 @@ export default class HpBar {
     }
   }
 
-  // Color and pulse by how much is left, and the "35/50" readout.
+  // Color and pulse by how much is left.
   refresh() {
     const fraction = this.shown / this.max;
     const color = fraction <= 0.2 ? COLORS.critical : fraction <= 0.4 ? COLORS.hurt : COLORS.healthy;
     this.fill.setFillStyle(color);
-    this.number.setText(`${this.shown}/${this.max}`);
 
     const pulsing = this.scene.tweens.isTweening(this.fill);
     if (fraction <= 0.2 && fraction > 0 && !pulsing) {
