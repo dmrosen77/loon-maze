@@ -7,7 +7,6 @@ import {
   GROWTH_PER_LEVEL,
   MAX_COLS,
   MAX_ROWS,
-  LEVEL_ADVANCE_MS,
   LOON_SPEED,
   LOON_STROKE_MS,
   LOON_TURN_SPEED,
@@ -250,20 +249,14 @@ export default class GameScene extends Phaser.Scene {
     this.reunited = true;
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
-    this.audio?.reunite();
 
-    const { width, height } = this.scale;
-    this.add
-      .text(width / 2, height / 2, `Reunited!\nLevel ${this.level} complete`, {
-        ...TEXT_STYLE,
-        fontSize: '32px',
-      })
-      .setOrigin(0.5)
-      .setScrollFactor(0)
-      .setDepth(10);
-
-    this.time.delayedCall(LEVEL_ADVANCE_MS, () => {
-      this.scene.restart({ level: this.level + 1 });
+    // A beat to see the two touch, then fade into the reunion cutscene, which
+    // starts the next level when it's done.
+    this.time.delayedCall(400, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.start('ReunionScene', { level: this.level });
+      });
     });
   }
 

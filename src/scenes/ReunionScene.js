@@ -1,0 +1,224 @@
+import * as Phaser from 'phaser';
+import { TILE_SIZE, SPRITE_PIXEL_SIZE, WATER_DRIFT, REUNION_MS, FONT_FAMILY, TITLE_COLORS } from '../config.js';
+import { BABY_LOON_BIG, HEART, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
+import { getLakeAudio } from '../audio.js';
+import loonBigUrl from '../assets/loon-big.png';
+
+// Screen pixels per art pixel for the big cutscene sprites.
+const BIG_PIXEL = 4;
+
+// Where things sit on the parent sprite, relative to its center, in screen
+// pixels at BIG_PIXEL scale (measured from src/assets/loon-big.png).
+const PARENT_BILL_TIP = 240;
+const PARENT_TAIL = -230;
+const PARENT_BACK = { x: -20, y: -14 };
+
+const PARENT_REST = { x: 330, y: 330 };
+
+const TEXT_STYLE = {
+  fontFamily: `"${FONT_FAMILY}"`,
+  color: '#ffffff',
+  stroke: '#000000',
+  strokeThickness: 6,
+};
+
+// Played after each maze: the parent glides in, the chick paddles over and
+// hops onto its back, hearts float up, then the next level starts.
+export default class ReunionScene extends Phaser.Scene {
+  constructor() {
+    super('ReunionScene');
+  }
+
+  preload() {
+    this.load.image('loon-big', loonBigUrl);
+  }
+
+  create(data) {
+    this.level = data.level;
+    this.leaving = false;
+    this.riding = false;
+    this.nextWakeTime = 0;
+    this.audio = getLakeAudio(this);
+
+    this.textures.get('loon-big').setFilter(Phaser.Textures.FilterMode.NEAREST);
+    makePixelTexture(this, 'baby-loon-big', BABY_LOON_BIG, BIG_PIXEL);
+    makePixelTexture(this, 'heart', HEART, BIG_PIXEL);
+    makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
+    makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
+
+    const { width, height } = this.scale;
+    // The lake at night: the in-game water, doubled in scale to match the big
+    // sprites' chunkier pixels and tinted darker.
+    this.water = this.add
+      .tileSprite(0, 0, width, height, 'water')
+      .setOrigin(0)
+      .setTileScale(2)
+      .setTint(0x8aa2d0);
+    this.wake = this.add.particles(0, 0, 'wake-droplet', {
+      lifespan: { min: 700, max: 1300 },
+      speed: { min: 20, max: 60 },
+      angle: { min: 150, max: 210 },
+      scale: { start: 1.5, end: 0.5 },
+      alpha: { start: 0.9, end: 0 },
+      emitting: false,
+    });
+
+    this.parent = this.add.image(-300, PARENT_REST.y, 'loon-big').setScale(BIG_PIXEL);
+    this.baby = this.add.image(width + 100, PARENT_REST.y - 30, 'baby-loon-big').setFlipX(true);
+
+    this.cameras.main.fadeIn(500, 0, 0, 0);
+    this.playSequence();
+
+    this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.time.delayedCall(REUNION_MS, () => this.nextLevel());
+  }
+
+  playSequence() {
+    // The parent glides in from the left and settles into a gentle bob.
+    this.tweens.add({
+      targets: this.parent,
+      x: PARENT_REST.x,
+      duration: 2000,
+      ease: 'Sine.easeOut',
+    });
+    this.bob(this.parent, 0);
+
+    // The chick paddles in from the right to meet the parent's bill.
+    const meetX = PARENT_REST.x + PARENT_BILL_TIP + 80;
+    this.tweens.add({
+      targets: this.baby,
+      x: meetX,
+      delay: 700,
+      duration: 1700,
+      ease: 'Sine.easeOut',
+      onComplete: () => this.hopOnBack(),
+    });
+    this.bob(this.baby, 300);
+  }
+
+  bob(target, delay) {
+    this.tweens.add({
+      targets: target,
+      y: '+=5',
+      duration: 900,
+      delay,
+      ease: 'Sine.easeInOut',
+      yoyo: true,
+      repeat: -1,
+    });
+  }
+
+  // Seen from above, a hop is the chick getting bigger (closer to us) and
+  // then smaller again as it lands on the parent's back.
+  hopOnBack() {
+    this.tweens.killTweensOf(this.baby);
+    this.baby.setFlipX(false);
+    const back = { x: this.parent.x + PARENT_BACK.x, y: this.parent.y + PARENT_BACK.y };
+    this.tweens.add({
+      targets: this.baby,
+      x: back.x,
+      y: back.y,
+      duration: 700,
+      ease: 'Sine.easeInOut',
+      onComplete: () => this.celebrate(),
+    });
+    this.tweens.add({
+      targets: this.baby,
+      scale: { from: 1, to: 1.35 },
+      duration: 350,
+      ease: 'Sine.easeOut',
+      yoyo: true,
+    });
+  }
+
+  celebrate() {
+    this.riding = true;
+    this.audio?.reunite();
+
+    // Hearts float up from the pair: a burst, then a trickle. They stay solid
+    // for most of their rise and fade out at the end.
+    const hearts = this.add.particles(0, 0, 'heart', {
+      lifespan: 2400,
+      speed: { min: 50, max: 100 },
+      angle: { min: 245, max: 295 },
+      scale: { start: 1, end: 1.3 },
+      alpha: { start: 1, end: 0, ease: 'Cubic.easeIn' },
+      emitting: false,
+    });
+    hearts.emitParticleAt(this.baby.x, this.baby.y - 30, 8);
+    this.time.addEvent({
+      delay: 300,
+      repeat: 12,
+      callback: () => hearts.emitParticleAt(this.baby.x + Phaser.Math.Between(-80, 80), this.baby.y - 30, 1),
+    });
+
+    this.showTitle();
+  }
+
+  // "REUNITED!" drops in letter by letter, then keeps bobbing in a wave.
+  showTitle() {
+    const { width, height } = this.scale;
+    const letters = [...'REUNITED!'].map((char) =>
+      this.add.text(0, 0, char, { ...TEXT_STYLE, fontSize: '56px', color: TITLE_COLORS.title }),
+    );
+    const totalWidth = letters.reduce((sum, letter) => sum + letter.width, 0);
+    let x = (width - totalWidth) / 2;
+    letters.forEach((letter, i) => {
+      letter.setPosition(x, -60).setOrigin(0, 0.5);
+      x += letter.width;
+      this.tweens.chain({
+        targets: letter,
+        tweens: [
+          { y: 110, duration: 500, delay: i * 70, ease: 'Bounce.easeOut' },
+          { y: 98, duration: 700, ease: 'Sine.easeInOut', yoyo: true, repeat: -1 },
+        ],
+      });
+    });
+
+    const subtitle = this.add
+      .text(width / 2, 178, `LEVEL ${this.level} COMPLETE`, { ...TEXT_STYLE, fontSize: '20px' })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    this.tweens.add({ targets: subtitle, alpha: 1, delay: 700, duration: 500 });
+
+    const prompt = this.add
+      .text(width / 2, height - 40, 'PRESS ENTER', { ...TEXT_STYLE, fontSize: '14px', strokeThickness: 4 })
+      .setOrigin(0.5)
+      .setVisible(false);
+    this.time.addEvent({
+      delay: 500,
+      startAt: 0,
+      loop: true,
+      callback: () => prompt.setVisible(!prompt.visible),
+    });
+  }
+
+  nextLevel() {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('GameScene', { level: this.level + 1 });
+    });
+  }
+
+  update(time) {
+    this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
+    this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
+
+    // The chick rides along as the parent bobs.
+    if (this.riding) {
+      this.baby.setPosition(this.parent.x + PARENT_BACK.x, this.parent.y + PARENT_BACK.y);
+    }
+
+    // A wake streams from the parent's tail while it's still gliding in.
+    if (this.parent.x < PARENT_REST.x - 5 && time >= this.nextWakeTime) {
+      this.wake.emitParticleAt(this.parent.x + PARENT_TAIL, this.parent.y + Phaser.Math.Between(-30, 30), 2);
+      this.nextWakeTime = time + 30;
+    }
+
+    if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+      this.nextLevel();
+    }
+  }
+}

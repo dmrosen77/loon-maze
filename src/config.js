@@ -17,8 +17,8 @@ export const GROWTH_PER_LEVEL = 2;
 export const MAX_COLS = 41;
 export const MAX_ROWS = 31;
 
-// Pause after reaching the baby before the next level starts (lets the loon calls finish).
-export const LEVEL_ADVANCE_MS = 3000;
+// How long the reunion cutscene plays before the next level starts (Enter skips it).
+export const REUNION_MS = 8000;
 
 export const LOON_SPEED = 180;
 // Time between paddling sounds while swimming.

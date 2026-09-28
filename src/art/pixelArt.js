@@ -99,6 +99,57 @@ export const BABY_LOON_TOP = {
   ],
 };
 
+// Cutscene art, drawn at the same chunky scale as src/assets/loon-big.png (the
+// parent, converted from art-source/loon-top.webp by tools/prepare_big_loon.py).
+// A round, fluffy chick facing right: dark cap, pale throat and belly, and
+// faint tufts of down ('k') around the edge.
+export const BABY_LOON_BIG = {
+  palette: {
+    K: '#161413',
+    k: 'rgba(22, 20, 19, 0.45)',
+    D: '#3a3532',
+    G: '#5a534f',
+    L: '#847c76',
+    W: '#cec7bf',
+    b: '#787a7e',
+    R: '#aa1e1e',
+  },
+  rows: [
+    '................................',
+    '.........k..k.............k.....',
+    '........KKKKKKKk...kKKKKKKK.....',
+    '......KKDDDDDDGKK.kKDDDDDDDKk...',
+    '...kKKDGDDDDGGDGGKKDDDDDDDDDKk..',
+    '..kKDGDDDDGGGGDDDDDDGGDDDDGDDK..',
+    '..KGGGDDGGGGDGDDGDGDGDGGDDGDGK..',
+    '.KDDDGDGGDGGGGDGDDDDDDDGGRRGGDK.',
+    'kKDGDDDDGGDGDGDDGGDGGDDDGDGGGbbK',
+    'KLDDDDDDDDDDDLLDDDLDDDDDLDDDDbK.',
+    'KDDDDDDDDDDDDDDLDDDDWWWWLWWWDK..',
+    'KDDDDDDDLDDDDDDDDDDDWLLLWWWWDK..',
+    'KDDDDDDDDDDDDDDDDLLDWWWWWWWWK...',
+    '.KLDDDLDDDDDDDDDDLDDDDDDDDDKk...',
+    '.KDDDLDDDDDDDDDDDDDDDKKKKKK.....',
+    '..KDDDDLLLWLWLLWWWWDK...........',
+    '...KDLDWLWWLWWWLLWLK............',
+    '....KKDLWWWWLWWLWKK.............',
+    '......KKWWLLWLLKK.k.............',
+    '........KKKKKKKkk...............',
+  ],
+};
+
+export const HEART = {
+  palette: { R: '#e8475f', P: '#ffb3c1', D: '#a82a42' },
+  rows: [
+    '.RR.RR.',
+    'RPRRRRR',
+    'RRRRRRR',
+    '.RRRRRD',
+    '..RRRD.',
+    '...D...',
+  ],
+};
+
 // Reed tiles for the maze walls, seen from above. Unlike the loon these are
 // generated rather than hand-drawn. Each tile is built from:
 // - a variant (which fixed seed lays out its clumps and cattails),
