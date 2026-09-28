@@ -10,15 +10,15 @@ import {
   LEVEL_ADVANCE_MS,
   LOON_SPEED,
   LOON_STROKE_MS,
-  LOON_WIDTH,
-  LOON_HEIGHT,
-  BABY_WIDTH,
-  BABY_HEIGHT,
+  LOON_TURN_SPEED,
+  LOON_BODY_SIZE,
+  SPRITE_PIXEL_SIZE,
   FONT_FAMILY,
   COLORS,
 } from '../config.js';
 import handMadeMaze from '../mazes/maze1.js';
 import generateMaze from '../mazes/generateMaze.js';
+import { LOON_TOP_FEET_OUT, LOON_TOP_FEET_IN, BABY_LOON_TOP, makePixelTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 
 const TEXT_STYLE = {
@@ -77,12 +77,19 @@ export default class GameScene extends Phaser.Scene {
       });
     });
 
-    this.baby = this.add.ellipse(babyStart.x, babyStart.y, BABY_WIDTH, BABY_HEIGHT, COLORS.baby);
+    this.createSprites();
+
+    // The chick faces roughly the way its parent will come from, snapped to
+    // up/down/left/right since pixel art looks ragged at odd angles.
+    this.baby = this.add.image(babyStart.x, babyStart.y, 'baby-loon-top');
+    const towardParent = Phaser.Math.Angle.BetweenPoints(babyStart, loonStart);
+    this.baby.rotation = Phaser.Math.Snap.To(towardParent, Math.PI / 2);
     this.physics.add.existing(this.baby, true);
 
     this.physics.world.setBounds(0, 0, mazeWidth, mazeHeight);
-    this.loon = this.add.ellipse(loonStart.x, loonStart.y, LOON_WIDTH, LOON_HEIGHT, COLORS.loon);
+    this.loon = this.add.sprite(loonStart.x, loonStart.y, 'loon-top-feet-in');
     this.physics.add.existing(this.loon);
+    this.loon.body.setSize(LOON_BODY_SIZE, LOON_BODY_SIZE);
     this.loon.body.setCollideWorldBounds(true);
     this.lastLoonX = loonStart.x;
     this.lastLoonY = loonStart.y;
@@ -95,6 +102,21 @@ export default class GameScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+  }
+
+  // Textures and the paddling animation are global, so they're only made once.
+  createSprites() {
+    makePixelTexture(this, 'loon-top-feet-out', LOON_TOP_FEET_OUT, SPRITE_PIXEL_SIZE);
+    makePixelTexture(this, 'loon-top-feet-in', LOON_TOP_FEET_IN, SPRITE_PIXEL_SIZE);
+    makePixelTexture(this, 'baby-loon-top', BABY_LOON_TOP, SPRITE_PIXEL_SIZE);
+    if (!this.anims.exists('loon-paddle')) {
+      this.anims.create({
+        key: 'loon-paddle',
+        frames: [{ key: 'loon-top-feet-out' }, { key: 'loon-top-feet-in' }],
+        frameRate: 2000 / LOON_STROKE_MS, // One kick per paddling sound.
+        repeat: -1,
+      });
+    }
   }
 
   // Mazes smaller than the screen sit centered; bigger ones scroll with the loon.
@@ -145,6 +167,7 @@ export default class GameScene extends Phaser.Scene {
     if (this.reunited) return;
     this.reunited = true;
     this.loon.body.setVelocity(0, 0);
+    this.loon.stop();
     this.audio?.reunite();
 
     const { width, height } = this.scale;
@@ -162,7 +185,7 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  update(time) {
+  update(time, delta) {
     if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
       this.audio?.toggleMute();
     }
@@ -179,7 +202,24 @@ export default class GameScene extends Phaser.Scene {
     velocity.normalize().scale(LOON_SPEED);
     this.loon.body.setVelocity(velocity.x, velocity.y);
 
+    this.animateLoon(velocity, delta);
     this.paddle(time);
+  }
+
+  // Paddle while a direction is held, and turn smoothly to face it.
+  // (The collision box is square, so turning never changes what the loon hits.)
+  animateLoon(velocity, delta) {
+    if (velocity.lengthSq() === 0) {
+      this.loon.stop();
+      this.loon.setTexture('loon-top-feet-in');
+      return;
+    }
+    this.loon.play('loon-paddle', true);
+    this.loon.rotation = Phaser.Math.Angle.RotateTo(
+      this.loon.rotation,
+      velocity.angle(),
+      (LOON_TURN_SPEED * delta) / 1000,
+    );
   }
 
   // A stroke sound every LOON_STROKE_MS while the loon is actually moving

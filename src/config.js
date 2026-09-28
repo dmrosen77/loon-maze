@@ -23,11 +23,14 @@ export const LEVEL_ADVANCE_MS = 3000;
 export const LOON_SPEED = 180;
 // Time between paddling sounds while swimming.
 export const LOON_STROKE_MS = 380;
-export const LOON_WIDTH = 30;
-export const LOON_HEIGHT = 20;
+// How fast the loon turns to face its swimming direction, in radians per second.
+export const LOON_TURN_SPEED = 12;
+// Square collision box, so walls behave the same whichever way the loon faces.
+// The sprite is a bit longer than this, so its head can poke into the reeds.
+export const LOON_BODY_SIZE = 24;
 
-export const BABY_WIDTH = 18;
-export const BABY_HEIGHT = 12;
+// Screen pixels per art pixel for the in-game sprites (see src/art/pixelArt.js).
+export const SPRITE_PIXEL_SIZE = 2;
 
 // 0 = silent, 1 = full. Press M in game to mute everything.
 export const VOLUME = {
@@ -42,8 +45,6 @@ export const FONT_FAMILY = 'Press Start 2P';
 export const COLORS = {
   water: '#2a6f97',
   reeds: 0x4c8c2b,
-  loon: 0x1b1b1b,
-  baby: 0x9e9e9e,
 };
 
 // Night lake on the title screen.

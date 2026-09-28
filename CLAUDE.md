@@ -17,7 +17,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - `src/config.js`: every tuning value (sizes, speeds, level curve, volumes, colors). Put new tunables here, not inline.
 - `src/scenes/TitleScene.js`: animated night-lake title screen with title music; Enter starts level 1
 - `src/scenes/GameScene.js`: gameplay. Builds the maze, handles movement, collisions, reunion, and level advance.
-- `src/art/pixelArt.js`: pixel art as character grids (same idea as mazes) plus `makePixelTexture()` to turn a grid into a texture
+- `src/art/pixelArt.js`: pixel art as character grids (same idea as mazes) plus `makePixelTexture()` to turn a grid into a texture. It holds the side-view loon for the title screen and the top-down loon (two paddling frames) and chick for gameplay. Top-down art faces right, and the game rotates it.
 - `src/mazes/generateMaze.js`: recursive-backtracker generator; puts the baby on the tile farthest from the start
 - `src/mazes/maze1.js`: hand-made maze, used when `PROCEDURAL_MAZE` is false
 - `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene changes. Scenes call `playMusic('title' | 'lake')`, which crossfades and is a no-op if that music is already playing.
@@ -27,6 +27,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - Mazes are arrays of equal-length strings: `#` reeds, `.` water, `P` loon start, `B` baby. The generator and hand-made mazes share this format.
 - Generated maze sizes must be odd (level 1 sizes odd, growth even).
 - A new level is `this.scene.restart({ level })`, and `create(data)` rebuilds everything. Anything that must persist across levels (like audio) lives outside the scene.
+- The loon's collision box is a square (`LOON_BODY_SIZE`) that is smaller than its sprite, because Arcade bodies don't rotate with the sprite. Its head pokes into the reeds a little by design.
 - Mazes larger than the view scroll with a camera that follows the loon. Smaller mazes are centered.
 - Import Phaser as `import * as Phaser from 'phaser'`.
 
@@ -42,6 +43,8 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - When the pane is hidden, the game loop is throttled, so time-based events like the level advance only move forward while screenshots are being taken.
 - Synthetic `KeyboardEvent`s dispatched on `window` drive movement. They don't count as user activation for audio, so click the canvas first.
 - Random mazes can't be steered by script. To test reunion or levels, temporarily expose the game (`window.__game = new Phaser.Game(config)`), then use `scene.loon.body.reset(x, y)` or `scene.scene.restart({ level })`. Remove the hook before committing.
+- The zoom screenshot action doesn't work in the pane. To inspect sprites up close, zoom the game camera instead: `camera.stopFollow()`, `camera.useBounds = false`, `camera.setZoom(5)`, then `camera.setScroll(...)`.
+- Starting a scene from a script doesn't run `create()` right away, and it takes longer while the pane is hidden, so wait before touching the new scene's objects.
 
 ## Git
 
