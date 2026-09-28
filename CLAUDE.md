@@ -30,7 +30,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - A new level is `this.scene.restart({ level })`, and `create(data)` rebuilds everything. Anything that must persist across levels (like audio) lives outside the scene.
 - The loon's collision box is a square (`LOON_BODY_SIZE`) that is smaller than its sprite, because Arcade bodies don't rotate with the sprite. Its head pokes into the reeds a little by design.
 - Layering in GameScene comes from creation order: water, wake particles, reeds, chick, loon, then text (depth 10). The wake sits under the reeds so droplets don't show on top of them.
-- Wake particles are emitted manually with `emitParticleAt()`, not by moving the emitter. In Phaser 4, moving an emitter drags its live particles along with it.
+- Wake particles are emitted manually with `emitParticleAt()` at points computed from the loon's rotation (`pointBehindLoon()`). The emitter itself stays at 0,0.
 - Mazes larger than the view scroll with a camera that follows the loon. Smaller mazes are centered.
 - Import Phaser as `import * as Phaser from 'phaser'`.
 
