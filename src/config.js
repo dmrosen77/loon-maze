@@ -45,3 +45,15 @@ export const COLORS = {
   loon: 0x1b1b1b,
   baby: 0x9e9e9e,
 };
+
+// Night lake on the title screen.
+export const TITLE_COLORS = {
+  sky: [0x0b1026, 0x111a3a, 0x19254f, 0x223264], // Top band to horizon.
+  stars: 0xfff8e1,
+  moon: 0xf5f1c8,
+  forest: 0x0a1a12,
+  water: 0x1c4e6e,
+  ripple: 0x8ec5e0,
+  reeds: [0x2f5e1c, 0x3d7524],
+  title: '#ffd54f',
+};

@@ -52,6 +52,8 @@ export default class GameScene extends Phaser.Scene {
     this.lastBumpTime = 0;
     this.nextStrokeTime = 0;
     this.audio = getLakeAudio(this);
+    this.audio?.playMusic('lake');
+    this.cameras.main.fadeIn(400, 0, 0, 0);
 
     const maze = mazeForLevel(this.level);
     const mazeWidth = maze[0].length * TILE_SIZE;

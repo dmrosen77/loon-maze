@@ -1,9 +1,20 @@
 // All sounds are synthesized with the Web Audio API, so there are no audio files.
-// One shared instance lives across scene restarts so the music keeps playing.
+// One shared instance lives across scenes and restarts so the music keeps playing.
 import { VOLUME } from './config.js';
 
 // A major pentatonic, A3 up to C#5: calm, and no two notes clash.
 const SCALE = [0, 2, 4, 7, 9, 12, 14, 16].map((semitones) => 220 * 2 ** (semitones / 12));
+
+// Title theme: 4 bars of eighth notes, in semitones from A4 (null = rest).
+const TITLE_MELODY = [
+  0, 4, 7, 9, 7, 4, 0, null,
+  2, 4, 2, 0, -3, null, 0, null,
+  0, 4, 7, 12, 9, 7, 4, null,
+  2, 4, 7, 4, 0, null, null, null,
+];
+// One bass root per bar, in semitones from A2: A, D, F#, E.
+const TITLE_BASS = [0, 5, -3, 7];
+const TITLE_STEP_SECONDS = 0.22;
 
 let instance = null;
 
@@ -60,8 +71,7 @@ class LakeAudio {
     if (this.started) return;
     this.started = true;
     this.ctx.resume();
-    this.startWater();
-    this.scheduleNote();
+    if (this.wantedMusic) this.playMusic(this.wantedMusic);
   }
 
   toggleMute() {
@@ -69,8 +79,91 @@ class LakeAudio {
     this.master.gain.setTargetAtTime(this.muted ? 0 : VOLUME.master, this.ctx.currentTime, 0.05);
   }
 
+  // Switch to 'title' or 'lake' music, fading out whatever was playing.
+  // Before the player has interacted, this just remembers what to play.
+  playMusic(name) {
+    this.wantedMusic = name;
+    if (!this.started || this.music?.name === name) return;
+
+    if (this.music) {
+      const old = this.music;
+      old.stop();
+      old.gain.gain.setTargetAtTime(0, this.ctx.currentTime, 0.2);
+      setTimeout(() => old.gain.disconnect(), 1500);
+    }
+
+    const gain = this.ctx.createGain();
+    gain.connect(this.musicBus);
+    const stop = name === 'title' ? this.startTitleMusic(gain) : this.startLakeMusic(gain);
+    this.music = { name, gain, stop };
+  }
+
+  // Lapping water plus slow, random notes. Returns a function that stops it.
+  startLakeMusic(out) {
+    const stopWater = this.startWater(out);
+    let timer;
+    const scheduleNote = () => {
+      const freq = SCALE[Math.floor(Math.random() * SCALE.length)];
+      this.playNote(freq, out);
+      if (Math.random() < 0.3) this.playNote(freq * 1.5, out); // Sometimes add a fifth above.
+      timer = setTimeout(scheduleNote, 1500 + Math.random() * 2500);
+    };
+    scheduleNote();
+    return () => {
+      clearTimeout(timer);
+      stopWater();
+    };
+  }
+
+  // A looping chiptune: square-wave melody over a triangle bass line.
+  // Notes are scheduled slightly ahead on the audio clock so timing stays tight.
+  startTitleMusic(out) {
+    const { ctx } = this;
+    let step = 0;
+    let nextTime = ctx.currentTime + 0.1;
+    let timer;
+    const tick = () => {
+      while (nextTime < ctx.currentTime + 0.3) {
+        const melody = TITLE_MELODY[step];
+        if (melody !== null) this.chipNote('square', 440 * 2 ** (melody / 12), nextTime, 0.18, 0.07, out);
+        if (step % 2 === 0) {
+          const root = TITLE_BASS[Math.floor(step / 8)];
+          const octave = step % 4 === 2 ? 12 : 0;
+          this.chipNote('triangle', 110 * 2 ** ((root + octave) / 12), nextTime, 0.3, 0.18, out);
+        }
+        step = (step + 1) % TITLE_MELODY.length;
+        nextTime += TITLE_STEP_SECONDS;
+      }
+      timer = setTimeout(tick, 100);
+    };
+    tick();
+    return () => clearTimeout(timer);
+  }
+
+  // Quick rising arpeggio for starting the game.
+  startJingle() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    [0, 4, 7, 12, 16].forEach((semitones, i) => {
+      this.chipNote('square', 440 * 2 ** (semitones / 12), t + i * 0.07, 0.2, 0.1, this.sfxBus);
+    });
+  }
+
+  chipNote(type, freq, t, length, volume, out) {
+    const osc = this.ctx.createOscillator();
+    osc.type = type;
+    osc.frequency.value = freq;
+    const gain = this.ctx.createGain();
+    gain.gain.setValueAtTime(volume, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + length);
+    osc.connect(gain).connect(out);
+    osc.start(t);
+    osc.stop(t + length);
+  }
+
   // Looping low-passed noise that slowly swells, for lapping water.
-  startWater() {
+  // Returns a function that stops it.
+  startWater(out) {
     const { ctx } = this;
     const noise = ctx.createBufferSource();
     noise.buffer = this.noiseBuffer;
@@ -88,20 +181,16 @@ class LakeAudio {
     lfoDepth.gain.value = 0.08;
     lfo.connect(lfoDepth).connect(swell.gain);
 
-    noise.connect(filter).connect(swell).connect(this.musicBus);
+    noise.connect(filter).connect(swell).connect(out);
     noise.start();
     lfo.start();
+    return () => {
+      noise.stop();
+      lfo.stop();
+    };
   }
 
-  // Plays a soft note, then schedules the next one at a random interval.
-  scheduleNote() {
-    const freq = SCALE[Math.floor(Math.random() * SCALE.length)];
-    this.playNote(freq);
-    if (Math.random() < 0.3) this.playNote(freq * 1.5); // Sometimes add a fifth above.
-    setTimeout(() => this.scheduleNote(), 1500 + Math.random() * 2500);
-  }
-
-  playNote(freq) {
+  playNote(freq, out) {
     const { ctx } = this;
     const t = ctx.currentTime;
     const osc = ctx.createOscillator();
@@ -114,7 +203,7 @@ class LakeAudio {
     gain.gain.exponentialRampToValueAtTime(0.001, t + 4);
 
     osc.connect(gain);
-    gain.connect(this.musicBus);
+    gain.connect(out);
     gain.connect(this.echo);
     osc.start(t);
     osc.stop(t + 4);

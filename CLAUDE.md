@@ -15,10 +15,12 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - `index.html`: page shell; the game mounts into `#game`
 - `src/main.js`: Phaser game config (fixed-size view, Arcade physics)
 - `src/config.js`: every tuning value (sizes, speeds, level curve, volumes, colors). Put new tunables here, not inline.
-- `src/scenes/GameScene.js`: the only scene. Builds the maze, handles movement, collisions, reunion, and level advance.
+- `src/scenes/TitleScene.js`: animated night-lake title screen with title music; Enter starts level 1
+- `src/scenes/GameScene.js`: gameplay. Builds the maze, handles movement, collisions, reunion, and level advance.
+- `src/art/pixelArt.js`: pixel art as character grids (same idea as mazes) plus `makePixelTexture()` to turn a grid into a texture
 - `src/mazes/generateMaze.js`: recursive-backtracker generator; puts the baby on the tile farthest from the start
 - `src/mazes/maze1.js`: hand-made maze, used when `PROCEDURAL_MAZE` is false
-- `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene restarts.
+- `src/audio.js`: all sound, synthesized with the Web Audio API. One shared instance survives scene changes. Scenes call `playMusic('title' | 'lake')`, which crossfades and is a no-op if that music is already playing.
 
 ## How things work
 
@@ -33,7 +35,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Sim
 - The Arcade collider callback fires every frame while the loon pushes into reeds. Throttle anything triggered from it (see `bump()`).
 - `body.deltaX()`/`deltaY()` are measured before collision separation, so they report movement even when the loon is blocked. To detect real movement, compare the game object's position with the previous frame's (see `paddle()`).
 - All text uses the Press Start 2P arcade font (`FONT_FAMILY` in config), bundled from `@fontsource/press-start-2p`. Phaser renders text with whatever font is loaded at that moment, so `main.js` waits for `document.fonts.load()` before creating the game. Keep that if the startup code changes.
-- Browsers block audio until the user interacts. `audio.js` starts on the first keydown or pointerdown.
+- Browsers block audio until the user interacts. `audio.js` starts on the first keydown or pointerdown, then plays whatever music was last requested. The title screen shows "PRESS ANY KEY" until then, so that press doesn't also start the game.
 
 ## Testing in the browser pane
 
