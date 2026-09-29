@@ -12,19 +12,39 @@ const STICK_RADIUS = 60;
 // Drags shorter than this fraction of the radius count as no input.
 const DEAD_ZONE = 0.15;
 
+// On touch screens the joystick waits in the bottom-left corner, faded, so
+// players can see how to swim before touching anything.
+const REST_ALPHA = 0.5;
+const REST_MARGIN = 40; // From the screen's left and bottom edges to the ring.
+// Until the first touch of the session, the resting knob circles slowly to
+// show that it moves.
+let hasTouched = false;
+
 // A floating joystick: put a finger down anywhere and drag toward where the
-// loon should swim. A ring appears under the finger; the knob follows the
-// drag. `vector` is the direction with a strength from 0 to 1. Touches that
-// start on a button (anything interactive) are left alone.
+// loon should swim. The ring jumps under the finger and the knob follows the
+// drag; on release it glides back to its corner (on touch screens) or hides
+// (with a mouse). `vector` is the direction with a strength from 0 to 1.
+// Touches that start on a button (anything interactive) are left alone.
 export class TouchStick {
   constructor(scene) {
     this.scene = scene;
     this.vector = new Phaser.Math.Vector2();
     this.pointerId = null;
+    this.showAtRest = isTouchDevice();
+    this.home = {
+      x: REST_MARGIN + STICK_RADIUS,
+      y: scene.scale.height - REST_MARGIN - STICK_RADIUS,
+    };
 
     this.base = scene.add.circle(0, 0, STICK_RADIUS, 0xffffff, 0.12).setStrokeStyle(3, 0xffffff, 0.5);
     this.knob = scene.add.circle(0, 0, 22, 0xffffff, 0.45);
-    for (const part of [this.base, this.knob]) part.setScrollFactor(0).setDepth(20).setVisible(false);
+    this.parts = [this.base, this.knob];
+    for (const part of this.parts) part.setScrollFactor(0).setDepth(20).setVisible(false);
+
+    if (this.showAtRest) {
+      for (const part of this.parts) part.setPosition(this.home.x, this.home.y).setAlpha(REST_ALPHA).setVisible(true);
+      if (!hasTouched) this.startHint();
+    }
 
     scene.input.on('pointerdown', this.onDown, this);
     scene.input.on('pointermove', this.onMove, this);
@@ -38,11 +58,29 @@ export class TouchStick {
     });
   }
 
+  // The resting knob circles inside the ring.
+  startHint() {
+    const orbit = { angle: 0 };
+    this.hint = this.scene.tweens.add({
+      targets: orbit,
+      angle: Math.PI * 2,
+      duration: 2200,
+      repeat: -1,
+      onUpdate: () => {
+        const reach = STICK_RADIUS * 0.55;
+        this.knob.setPosition(this.home.x + Math.cos(orbit.angle) * reach, this.home.y + Math.sin(orbit.angle) * reach);
+      },
+    });
+  }
+
   onDown(pointer, overObjects) {
     if (this.pointerId !== null || overObjects.length > 0) return;
     this.pointerId = pointer.id;
-    this.base.setPosition(pointer.x, pointer.y).setVisible(true);
-    this.knob.setPosition(pointer.x, pointer.y).setVisible(true);
+    hasTouched = true;
+    this.hint?.remove();
+    this.hint = null;
+    this.scene.tweens.killTweensOf(this.parts);
+    for (const part of this.parts) part.setPosition(pointer.x, pointer.y).setAlpha(1).setVisible(true);
     this.vector.set(0, 0);
   }
 
@@ -59,8 +97,18 @@ export class TouchStick {
     if (pointer.id !== this.pointerId) return;
     this.pointerId = null;
     this.vector.set(0, 0);
-    this.base.setVisible(false);
-    this.knob.setVisible(false);
+    if (!this.showAtRest) {
+      for (const part of this.parts) part.setVisible(false);
+      return;
+    }
+    this.scene.tweens.add({
+      targets: this.parts,
+      x: this.home.x,
+      y: this.home.y,
+      alpha: REST_ALPHA,
+      duration: 250,
+      ease: 'Sine.easeOut',
+    });
   }
 }
 

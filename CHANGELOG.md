@@ -11,6 +11,7 @@ All notable changes to Loon Maze. The format is based on
 - Home-screen app support. "Add to Home Screen" gives a Loon Maze icon that opens full screen, with no browser bars. On Android, the first tap on the title also goes full screen and holds the screen sideways.
 
 ### Changed
+- On phones and tablets the joystick is shown before you touch the screen. It rests, faded, in the bottom-left corner, and its knob circles until your first touch to show how to swim. It still jumps to wherever you put your thumb, and glides back to its corner when you let go.
 - On phones and tablets the game widens to fill the screen held sideways, with no black bars at the sides, and shows more of the maze side to side. Desktop is unchanged.
 - On phones with a notch or rounded corners, the game stays inside the visible area.
 
