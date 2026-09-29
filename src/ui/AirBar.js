@@ -54,6 +54,19 @@ export default class AirBar {
     if (low) this.scene.tweens.add({ targets: this.fill, alpha: 0.3, duration: 150, yoyo: true, repeat: -1 });
   }
 
+  // One more pip, for a dive gained during the level.
+  addDive() {
+    const last = this.pips.at(-1);
+    const x = last ? last.x + PIP_SPACING : this.fill.x + this.width + 12 + PIP_RADIUS;
+    const pip = this.scene.add
+      .circle(x, this.fill.y, PIP_RADIUS, COLORS.full)
+      .setStrokeStyle(2, COLORS.frame)
+      .setScrollFactor(0)
+      .setDepth(this.fill.depth);
+    this.pips.push(pip);
+    this.scene.tweens.add({ targets: pip, scale: { from: 2, to: 1 }, duration: 300, ease: 'Back.easeOut' });
+  }
+
   // Used dives' pips go dark, from the right.
   setDivesLeft(left) {
     this.pips.forEach((pip, i) => pip.setFillStyle(i < left ? COLORS.full : COLORS.empty));

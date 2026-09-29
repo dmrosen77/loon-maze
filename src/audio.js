@@ -448,6 +448,23 @@ class LakeAudio {
     this.hurt();
   }
 
+  // Snapping up a fish: a quick wet snap and a bright blip.
+  chomp() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    this.splash(2500, 900, 0.08, 0.3);
+    this.chipNote('square', 1175, t + 0.03, 0.08, 0.08, this.sfxBus);
+  }
+
+  // A star appearing on the reunion screen; each one (0, 1, 2) a step higher.
+  star(index) {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    const base = 660 * 2 ** ((index * 4) / 12);
+    this.chipNote('square', base, t, 0.1, 0.09, this.sfxBus);
+    this.chipNote('triangle', base * 2, t + 0.07, 0.3, 0.12, this.sfxBus);
+  }
+
   // A frog's two quick croaks as it hops off its lily pad.
   ribbit() {
     if (!this.started) return;

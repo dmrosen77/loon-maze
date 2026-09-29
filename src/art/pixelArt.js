@@ -147,6 +147,47 @@ export const DRAGONFLY_BLUR = {
   ],
 };
 
+// A fish seen from above, facing right, in silver and in gold.
+const FISH_ROWS = [
+  '....ooo..',
+  't..oOOOo.',
+  'ttoOOOOOo',
+  't..oOOOo.',
+  '....ooo..',
+];
+export const FISH = { palette: { o: '#50646f', O: '#a9bcc6', t: '#7d929c' }, rows: FISH_ROWS };
+export const GOLDEN_FISH = { palette: { o: '#9a6a12', O: '#ffd54f', t: '#e0a526' }, rows: FISH_ROWS };
+
+// A big air bubble (the extra-dive pickup), with a highlight.
+export const AIR_BUBBLE = {
+  palette: { b: '#cfeeff', w: '#ffffff', f: 'rgba(150, 205, 255, 0.35)' },
+  rows: [
+    '..bbbbb..',
+    '.bfffffb.',
+    'bffwwfffb',
+    'bffwffffb',
+    'bfffffffb',
+    'bfffffffb',
+    'bfffffffb',
+    '.bfffffb.',
+    '..bbbbb..',
+  ],
+};
+
+// Stars for the reunion screen, earned and not.
+const STAR_ROWS = [
+  '....o....',
+  '...oyo...',
+  'oooyyyooo',
+  'oyyyyyyyo',
+  '.oyyyyyo.',
+  '.oyyoyyo.',
+  'oyyo.oyyo',
+  'oo.....oo',
+];
+export const STAR = { palette: { o: '#8a5a00', y: '#ffd54f' }, rows: STAR_ROWS };
+export const STAR_EMPTY = { palette: { o: '#1c2233', y: '#3a4560' }, rows: STAR_ROWS };
+
 // Reed tiles for the maze walls, seen from above. Unlike the loon these are
 // generated rather than hand-drawn. Each tile is built from:
 // - a variant (which fixed seed lays out its clumps and cattails),

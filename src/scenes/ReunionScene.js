@@ -10,7 +10,7 @@ import {
   TITLE_COLORS,
   DIVE_UNLOCK_LEVEL,
 } from '../config.js';
-import { HEART, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
+import { HEART, STAR, STAR_EMPTY, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import { isTouchDevice } from '../ui/touch.js';
 import loonBigUrl from '../assets/loon-big.png';
@@ -61,6 +61,8 @@ export default class ReunionScene extends Phaser.Scene {
     this.score = data.score ?? 0;
     this.levelPoints = data.levelPoints ?? 0;
     this.speedBonus = data.speedBonus ?? 0;
+    this.fishPoints = data.fishPoints ?? 0;
+    this.stars = data.stars ?? 1;
     this.leaving = false;
     this.riding = false;
     this.nextWakeTime = 0;
@@ -70,6 +72,8 @@ export default class ReunionScene extends Phaser.Scene {
       this.textures.get(key).setFilter(Phaser.Textures.FilterMode.NEAREST);
     }
     makePixelTexture(this, 'heart', HEART, BIG_PIXEL);
+    makePixelTexture(this, 'star', STAR, 3);
+    makePixelTexture(this, 'star-empty', STAR_EMPTY, 3);
     makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
 
@@ -194,20 +198,48 @@ export default class ReunionScene extends Phaser.Scene {
     this.showTitle();
     this.time.delayedCall(1100, () => this.heal());
     this.time.delayedCall(700, () => this.showPoints());
+    this.time.delayedCall(1000, () => this.showStars());
   }
 
   // What this level earned, then the total counting up to include it.
   showPoints() {
     const { width } = this.scale;
-    const previous = this.score - this.levelPoints - this.speedBonus;
+    const previous = this.score - this.levelPoints - this.speedBonus - this.fishPoints;
     const line = this.add
       .text(width / 2, 528, '', { ...TEXT_STYLE, fontSize: '14px', strokeThickness: 4 })
       .setOrigin(0.5);
     const counter = { value: previous };
     const show = () =>
-      line.setText(`LEVEL +${this.levelPoints}   SPEED +${this.speedBonus}   SCORE ${Math.round(counter.value)}`);
+      line.setText(
+        [
+          `LEVEL +${this.levelPoints}`,
+          `SPEED +${this.speedBonus}`,
+          ...(this.fishPoints > 0 ? [`FISH +${this.fishPoints}`] : []),
+          `SCORE ${Math.round(counter.value)}`,
+        ].join('   '),
+      );
     show();
     this.tweens.add({ targets: counter, value: this.score, delay: 400, duration: 1000, ease: 'Sine.easeOut', onUpdate: show });
+  }
+
+  // Three stars between "REUNITED!" and "LEVEL N COMPLETE": the earned ones pop in one by one,
+  // each with a higher chime, over dark empty ones.
+  showStars() {
+    const { width } = this.scale;
+    [-1, 0, 1].forEach((offset, i) => {
+      const x = width / 2 + offset * 44;
+      this.add.image(x, 150, 'star-empty');
+      if (i >= this.stars) return;
+      const star = this.add.image(x, 150, 'star').setScale(0);
+      this.tweens.add({
+        targets: star,
+        scale: 1,
+        delay: i * 280,
+        duration: 320,
+        ease: 'Back.easeOut',
+        onStart: () => this.audio?.star(i),
+      });
+    });
   }
 
   // The HP bar grows back, with a "+5 HP" floating up beside it.

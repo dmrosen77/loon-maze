@@ -109,6 +109,40 @@ export const SPRITE_PIXEL_SIZE = 2;
 export const REED_SWAY_SPEED = 1.8;
 export const REED_GUST_SPACING = 360;
 
+// The level each feature first appears on. That level announces it under the
+// level banner. (Diving has its own DIVE_UNLOCK_LEVEL, above.)
+export const FEATURE_LEVELS = {
+  fish: 2,
+  diveBubbles: 7,
+};
+
+// Fish dart around the open water: swim into one for FISH_POINTS. Some
+// (GOLDEN_FISH_CHANCE) are golden and heal GOLDEN_FISH_HEAL HP instead. They
+// wander at FISH_SPEED and flee at FISH_FLEE_SPEED (slower than the loon)
+// when it comes within FISH_FLEE_DISTANCE pixels.
+export const FISH_POINTS = 50;
+export const GOLDEN_FISH_CHANCE = 0.15;
+export const GOLDEN_FISH_HEAL = 3;
+export const FISH_SPEED = 40;
+export const FISH_FLEE_SPEED = 120;
+export const FISH_FLEE_DISTANCE = 80;
+// How many fish a level has. The score server uses this too, to know the most
+// points a game could have scored, so keep it a plain function of the level.
+export function fishForLevel(level) {
+  return level < FEATURE_LEVELS.fish ? 0 : Math.min(2 + level, 16);
+}
+
+// On diving levels from FEATURE_LEVELS.diveBubbles, DIVE_BUBBLE_CHANCE of
+// levels hide a big air bubble in a dead end off the main path. Grabbing it
+// gives an extra dive for that level.
+export const DIVE_BUBBLE_CHANCE = 0.6;
+
+// Stars on the reunion screen: one for finishing, two for beating par time,
+// three for beating par without a hit. Par is PAR_SECONDS_BASE plus
+// PAR_SECONDS_PER_TILE for each tile on the path from the start to the chick.
+export const PAR_SECONDS_BASE = 4;
+export const PAR_SECONDS_PER_TILE = 0.45;
+
 // Time of day: levels cycle through these in order (level 1 is the first).
 // `tint` colors the whole lake (multiplied over it, so white changes nothing,
 // and it can only darken); `glow` then adds light of that color on top.

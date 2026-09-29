@@ -6,6 +6,15 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **Fish.** From level 2, fish dart around the open water and bolt when you get close. Catch one for 50 points; golden ones heal 3 HP instead. More fish on later levels. Points show in the corner as you earn them, and fish points get their own line on the reunion screen.
+- **Extra-dive bubbles.** From level 7, some levels hide a big air bubble in a dead end off the main path. Grab it for an extra dive that level.
+- **Stars.** The reunion screen rates each level: one star for finishing, two for beating par time, three for beating par without a hit.
+- New features now announce themselves under the level banner the first time they appear.
+
+### Changed
+- The world high score server allows for fish points when checking whether a score is possible.
+
 ## [1.4.0] - 2026-09-29
 
 ### Added

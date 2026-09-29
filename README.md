@@ -15,7 +15,8 @@ Guide a loon through a maze of reeds to reunite with its chick, before the bald 
 - **Mind the reeds.** Swimming hard into a reed wall costs HP. Gentle bumps are free. Your HP carries from level to level, and every reunion heals a little. Run out, and the eagle swoops in.
 - **Dive under the reeds.** From level 6 on, the loon can dive and swim under the reed walls, after a short lesson. You get one dive per level at first, and an extra one at levels 11, 16 and 21. Each dive is a single short breath, and running out under the reeds costs HP.
 - **Swim like a loon.** The loon speeds up, glides when you let go, curves through turns, bounces off the reeds and drifts with the current.
-- **Score big.** Each level earns 1000 × the level number, plus a speed bonus for finishing fast. The top 10 scores go on the high score table with your initials, arcade style. If the game is hosted with its score server, that's a **world** table shared by everyone who plays there; otherwise it's kept on your device.
+- **Catch fish.** From level 2, fish dart around the maze. Catch them for points, and golden ones heal. Later, big air bubbles hidden in dead ends give an extra dive.
+- **Score big.** Each level earns 1000 × the level number, plus a speed bonus for finishing fast, and up to three stars. The top 10 scores go on the high score table with your initials, arcade style. If the game is hosted with its score server, that's a **world** table shared by everyone who plays there; otherwise it's kept on your device.
 
 ## Controls
 

@@ -17,7 +17,7 @@
 import http from 'node:http';
 import fs from 'node:fs';
 import path from 'node:path';
-import { LEVEL_POINTS, SPEED_BONUS_MAX, HIGH_SCORE_COUNT } from '../src/config.js';
+import { LEVEL_POINTS, SPEED_BONUS_MAX, HIGH_SCORE_COUNT, FISH_POINTS, fishForLevel } from '../src/config.js';
 
 const PORT = Number(process.env.PORT || 3010);
 const HOST = process.env.HOST || '127.0.0.1';
@@ -41,10 +41,13 @@ const BLOCKED_NAMES = new Set([
 ]);
 
 // The most a game carried off on `level` could have scored: every earlier
-// level finished with the full speed bonus.
+// level finished with the full speed bonus and every fish caught, plus every
+// fish on the level it ended on.
 function maxPossibleScore(level) {
-  let total = 0;
-  for (let finished = 1; finished < level; finished++) total += LEVEL_POINTS * finished + SPEED_BONUS_MAX;
+  let total = fishForLevel(level) * FISH_POINTS;
+  for (let finished = 1; finished < level; finished++) {
+    total += LEVEL_POINTS * finished + SPEED_BONUS_MAX + fishForLevel(finished) * FISH_POINTS;
+  }
   return total;
 }
 

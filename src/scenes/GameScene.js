@@ -39,6 +39,12 @@ import {
   DIVE_SHADOW_TINT,
   DIVE_SHADOW_ALPHA,
   DIVE_BUBBLE_MS,
+  FEATURE_LEVELS,
+  FISH_POINTS,
+  fishForLevel,
+  GOLDEN_FISH_HEAL,
+  PAR_SECONDS_BASE,
+  PAR_SECONDS_PER_TILE,
   FONT_FAMILY,
 } from '../config.js';
 import handMadeMaze from '../mazes/maze1.js';
@@ -60,7 +66,9 @@ import { getLakeAudio } from '../audio.js';
 import mazeInfo from '../mazes/mazeInfo.js';
 import Lighting, { timeOfDayForLevel } from '../game/Lighting.js';
 import Decor from '../game/Decor.js';
-import { ripple, hitFlash, heartBurst } from '../game/effects.js';
+import Fish from '../game/Fish.js';
+import Pickups from '../game/Pickups.js';
+import { ripple, popText, hitFlash, heartBurst } from '../game/effects.js';
 import HpBar from '../ui/HpBar.js';
 import AirBar from '../ui/AirBar.js';
 import { TouchStick, addMuteButton, addDiveButton, isTouchDevice } from '../ui/touch.js';
@@ -79,6 +87,7 @@ const TEXT_STYLE = {
 const DEPTH = {
   water: 0,
   pads: 1,
+  fish: 1.5,
   wake: 2,
   reeds: 3,
   ripples: 4,
@@ -134,6 +143,8 @@ export default class GameScene extends Phaser.Scene {
     this.hp = data?.hp ?? LOON_MAX_HP;
     this.score = data?.score ?? 0;
     this.invulnerableUntil = 0;
+    this.hitsThisLevel = 0; // For the no-hit star.
+    this.fishPoints = 0; // Points from fish this level, shown on the reunion screen.
     this.lastBumpTime = 0;
     this.nextStrokeTime = 0;
     this.nextWakeTime = 0;
@@ -231,6 +242,16 @@ export default class GameScene extends Phaser.Scene {
       },
     });
     this.lighting = new Lighting(this, this.info, { tintDepth: DEPTH.tint, glowDepth: DEPTH.glow });
+    // Fish and the extra-dive bubble; the dive lesson has neither.
+    this.fish = new Fish(this, this.info, {
+      count: this.lesson ? 0 : fishForLevel(this.level),
+      depth: DEPTH.fish,
+      onCatch: (x, y, golden) => this.catchFish(x, y, golden),
+    });
+    const bubbleLevel = this.canDive && !this.lesson && this.level >= FEATURE_LEVELS.diveBubbles;
+    this.pickups = bubbleLevel
+      ? new Pickups(this, this.info, { depth: DEPTH.pads + 0.2, onGrab: (x, y) => this.grabDiveBubble(x, y) })
+      : null;
     this.showLevelText();
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -351,7 +372,7 @@ export default class GameScene extends Phaser.Scene {
       });
     }
     if (this.lesson) this.showLessonHints();
-    this.add
+    this.scoreText = this.add
       .text(this.scale.width - 12, 8, `SCORE ${this.score}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setOrigin(1, 0)
       .setScrollFactor(0)
@@ -384,7 +405,42 @@ export default class GameScene extends Phaser.Scene {
     if (!this.lesson && this.diveTier !== DIVE_TIERS[0] && this.diveTier.level === this.level) {
       callouts.push('EXTRA DIVE!'); // An extra dive per level starts here (after the first tier).
     }
+    if (!this.lesson && this.level === FEATURE_LEVELS.fish) callouts.push('CATCH FISH FOR POINTS!');
+    if (!this.lesson && this.level === FEATURE_LEVELS.diveBubbles) callouts.push('BUBBLES GIVE EXTRA DIVES!');
     this.showCallouts(callouts);
+  }
+
+  // Points during a level, shown in the corner right away.
+  addScore(points) {
+    this.score += points;
+    this.scoreText.setText(`SCORE ${this.score}`);
+  }
+
+  catchFish(x, y, golden) {
+    this.audio?.chomp();
+    this.wake.emitParticleAt(x, y, 5);
+    ripple(this, x, y, { depth: DEPTH.ripples, radius: 12 });
+    if (golden) {
+      const healed = Math.min(LOON_MAX_HP, this.hp + GOLDEN_FISH_HEAL) - this.hp;
+      this.hp += healed;
+      this.hpBar.setValue(this.hp);
+      this.audio?.heal();
+      popText(this, x, y, healed > 0 ? `+${healed} HP` : 'HP FULL', { depth: DEPTH.effects, color: '#ffd54f' });
+    } else {
+      this.fishPoints += FISH_POINTS;
+      this.addScore(FISH_POINTS);
+      popText(this, x, y, `+${FISH_POINTS}`, { depth: DEPTH.effects });
+    }
+  }
+
+  // An extra dive for this level.
+  grabDiveBubble(x, y) {
+    this.divesLeft += 1;
+    this.airBar.addDive();
+    this.airBar.setDivesLeft(this.divesLeft);
+    this.audio?.coin();
+    ripple(this, x, y, { depth: DEPTH.ripples, color: 0xbfe6ff, radius: 24 });
+    popText(this, x, y, '+1 DIVE', { depth: DEPTH.effects, color: '#4fb3ff' });
   }
 
   // Blue lines of news under the level banner, lingering a little longer.
@@ -443,6 +499,7 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf(this.loon);
     this.hp = Math.max(0, this.hp - amount);
     this.invulnerableUntil = now + LOON_INVULNERABLE_MS;
+    this.hitsThisLevel += 1;
     this.hpBar.setValue(this.hp);
     this.cameras.main.shake(120, 0.006);
     hitFlash(this, { depth: DEPTH.flash });
@@ -497,6 +554,9 @@ export default class GameScene extends Phaser.Scene {
     const seconds = (this.time.now - this.levelStartTime) / 1000;
     const levelPoints = LEVEL_POINTS * this.level;
     const speedBonus = Math.max(0, Math.round(SPEED_BONUS_MAX - seconds * SPEED_BONUS_LOSS));
+    // Stars: one for finishing, two for beating par, three for doing it without a hit.
+    const par = PAR_SECONDS_BASE + this.info.pathLength * PAR_SECONDS_PER_TILE;
+    const stars = seconds > par ? 1 : this.hitsThisLevel > 0 ? 2 : 3;
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
     heartBurst(this, this.baby.x, this.baby.y, 'heart-small', { depth: DEPTH.effects });
@@ -513,6 +573,8 @@ export default class GameScene extends Phaser.Scene {
           score: this.score + levelPoints + speedBonus,
           levelPoints,
           speedBonus,
+          fishPoints: this.fishPoints,
+          stars,
         });
       });
     });
@@ -621,6 +683,10 @@ export default class GameScene extends Phaser.Scene {
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
     this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
     this.decor.update(this.loon);
+    if (!this.reunited && !this.gameOver) {
+      this.fish.update(this.loon);
+      this.pickups?.update(this.loon);
+    }
 
     if (this.gameOver || this.reunited) return;
 
