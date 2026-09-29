@@ -1,0 +1,42 @@
+# Changelog
+
+All notable changes to Loon Maze. The format is based on
+[Keep a Changelog](https://keepachangelog.com/en/1.1.0/), and versions follow
+[Semantic Versioning](https://semver.org/).
+
+## [1.1.0] - 2026-09-29
+
+### Added
+- **Mobile support.** The game scales to fit any screen. On phones and tablets:
+  - A floating joystick: drag anywhere to swim, and drag further to paddle harder.
+  - Taps work wherever Enter does.
+  - Tappable arrows and an OK button for entering initials.
+  - A sound on/off button.
+  - A message asking you to turn the phone sideways.
+- **Scoring.** Finishing a level earns 1000 × the level number, plus a speed bonus of up to 1000 points. The score shows during play, the win screen shows what each level earned, and game over shows the final score.
+- **High score table.** A top-10 score gets arcade-style 3-letter initials. Then the eagle flies in carrying the "HIGH SCORES" banner, the rows swoop in, and new high-score music plays. Scores are saved in the browser.
+- **Attract mode.** After 20 idle seconds, the title screen shows the high scores, then returns on its own.
+- **INSERT COIN.** The title asks you to insert a coin: the first key press or tap plays a coin sound.
+- `npm run dev:phone` to try the game on a phone over Wi-Fi.
+
+### Changed
+- The game-over eagle is now bigger than the loon, the way a real bald eagle is, and the loon stays visible in its talons as it's carried off.
+
+### Fixed
+- The speed bonus no longer counts time spent on the win screen before a level starts.
+
+## [1.0.0] - 2026-09-28
+
+First release.
+
+### Added
+- Randomly generated lake mazes that grow each level, with a camera that scrolls on big mazes.
+- Swimming physics: acceleration, gliding, curved turns, bouncing off reeds, and drifting with the current.
+- 50 HP: hard hits on the reeds cost HP, HP carries between levels, and each reunion heals a little.
+- Animated title screen: a moonlit lake with the loon and chick, swaying reeds, lily pads, glinting water and fireflies.
+- Reunion cutscene after each level, and a game-over cutscene where a bald eagle carries the loon away.
+- Pixel art throughout, with animated reed walls, drifting water and wake particles.
+- Synthesized music and sound effects, and an arcade font.
+
+[1.1.0]: https://github.com/dmrosen77/loon-maze/compare/v1.0.0...v1.1.0
+[1.0.0]: https://github.com/dmrosen77/loon-maze/releases/tag/v1.0.0
