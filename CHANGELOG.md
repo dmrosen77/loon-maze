@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-29
+
 ### Added
 - **Time of day.** Levels cycle through dawn, day, sunset and night, shown under the level banner. Sunset turns the water dusky purple with pink and gold highlights; at night the lake goes deep blue, with moonlight glinting on the water and fireflies over the reeds.
 - **Lake life.** Lily pads (some with water lilies) float in the open water off the main path, frogs sit on some of them and hop off with a ribbit when you swim close, and dragonflies dart around.
@@ -75,7 +77,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.3.1...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.4.0...HEAD
+[1.4.0]: https://github.com/dmrosen77/loon-maze/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/dmrosen77/loon-maze/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/dmrosen77/loon-maze/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dmrosen77/loon-maze/compare/v1.1.0...v1.2.0
