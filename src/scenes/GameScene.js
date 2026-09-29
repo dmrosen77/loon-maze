@@ -45,6 +45,7 @@ import {
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import HpBar from '../ui/HpBar.js';
+import { TouchStick, addMuteButton } from '../ui/touch.js';
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -157,6 +158,8 @@ export default class GameScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+    this.stick = new TouchStick(this);
+    addMuteButton(this, this.audio, this.scale.width - 12, 34);
   }
 
   // Textures and the paddling animation are global, so they're only made once.
@@ -361,11 +364,14 @@ export default class GameScene extends Phaser.Scene {
 
     if (this.gameOver || this.reunited) return;
 
+    // Arrow keys, or the touch joystick (whose drag distance sets how hard the
+    // loon paddles).
     const { left, right, up, down } = this.cursors;
-    const input = new Phaser.Math.Vector2(
+    let input = new Phaser.Math.Vector2(
       (right.isDown ? 1 : 0) - (left.isDown ? 1 : 0),
       (down.isDown ? 1 : 0) - (up.isDown ? 1 : 0),
     ).normalize(); // So diagonals aren't faster than straight lines.
+    if (input.lengthSq() === 0) input = this.stick.vector.clone();
     const paddling = input.lengthSq() > 0;
 
     this.swim(input, paddling, delta);

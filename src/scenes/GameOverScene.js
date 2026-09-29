@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { TILE_SIZE, SPRITE_PIXEL_SIZE, WATER_DRIFT, FONT_FAMILY } from '../config.js';
 import { makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import { isTouchDevice } from '../ui/touch.js';
 import loonBigUrl from '../assets/loon-big.png';
 import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
@@ -117,6 +118,8 @@ export default class GameOverScene extends Phaser.Scene {
 
     this.cameras.main.fadeIn(500, 0, 0, 0);
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.tapped = false;
+    this.input.on('pointerdown', () => (this.tapped = true)); // A tap works like Enter.
 
     this.time.delayedCall(700, () => this.alert());
     this.time.delayedCall(1300, () => this.swoopIn());
@@ -240,7 +243,11 @@ export default class GameOverScene extends Phaser.Scene {
     this.time.delayedCall(1400, () => {
       this.canLeave = true;
       const prompt = this.add
-        .text(width / 2, height - 60, 'PRESS ENTER', { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
+        .text(width / 2, height - 60, isTouchDevice() ? 'TAP TO CONTINUE' : 'PRESS ENTER', {
+          ...TEXT_STYLE,
+          fontSize: '16px',
+          strokeThickness: 4,
+        })
         .setOrigin(0.5);
       this.time.addEvent({ delay: 500, loop: true, callback: () => prompt.setVisible(!prompt.visible) });
     });
@@ -263,7 +270,9 @@ export default class GameOverScene extends Phaser.Scene {
         .setRotation(this.carrier ? this.carrier.rotation : this.eagle.rotation);
     }
 
-    if (this.canLeave && !this.leaving && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+    const pressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped;
+    this.tapped = false;
+    if (this.canLeave && !this.leaving && pressed) {
       this.leaving = true;
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {

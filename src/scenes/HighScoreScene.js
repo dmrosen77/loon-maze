@@ -10,6 +10,7 @@ import {
 } from '../config.js';
 import { makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import { isTouchDevice } from '../ui/touch.js';
 import { loadHighScores, isHighScore, addHighScore } from '../highScores.js';
 import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
@@ -80,6 +81,11 @@ export default class HighScoreScene extends Phaser.Scene {
       .setTint(0x6878a0);
 
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    // A tap on the table works like Enter (but not a tap on a button).
+    this.tapped = false;
+    this.input.on('pointerdown', (pointer, overObjects) => {
+      if (overObjects.length === 0) this.tapped = true;
+    });
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     if (this.attract) {
@@ -89,6 +95,7 @@ export default class HighScoreScene extends Phaser.Scene {
         if (!event.repeat) this.returnToTitle();
       };
       this.input.keyboard.on('keydown', onKey);
+      this.input.on('pointerdown', () => this.returnToTitle());
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard.off('keydown', onKey));
     } else if (isHighScore(this.score)) {
       this.enterInitials();
@@ -118,11 +125,14 @@ export default class HighScoreScene extends Phaser.Scene {
       this.add.text(width / 2, 180, `SCORE ${this.score}`, { ...TEXT_STYLE, fontSize: '24px' }).setOrigin(0.5),
       this.add.text(width / 2, 250, 'ENTER YOUR INITIALS', { ...TEXT_STYLE, fontSize: '16px' }).setOrigin(0.5),
       this.add
-        .text(width / 2, 560, 'UP/DOWN: LETTER   LEFT/RIGHT: MOVE   ENTER: OK', {
-          ...TEXT_STYLE,
-          fontSize: '10px',
-          strokeThickness: 4,
-        })
+        .text(
+          width / 2,
+          560,
+          isTouchDevice()
+            ? 'TAP THE ARROWS TO PICK LETTERS, THEN OK'
+            : 'UP/DOWN: LETTER   LEFT/RIGHT: MOVE   ENTER: OK',
+          { ...TEXT_STYLE, fontSize: '10px', strokeThickness: 4 },
+        )
         .setOrigin(0.5),
     ];
 
@@ -131,7 +141,7 @@ export default class HighScoreScene extends Phaser.Scene {
     );
     this.cursor = this.add.rectangle(0, 385, 64, 6, 0xffd54f);
     this.time.addEvent({ delay: 250, loop: true, callback: () => this.cursor.setVisible(!this.cursor.visible) });
-    this.initialsParts = [...parts, ...this.slotTexts, this.cursor];
+    this.initialsParts = [...parts, ...this.slotTexts, this.cursor, ...this.addInitialsButtons()];
     this.refreshInitials();
 
     const onKey = (event) => {
@@ -153,6 +163,45 @@ export default class HighScoreScene extends Phaser.Scene {
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard.off('keydown', onKey));
   }
 
+  // Tappable (or clickable) controls: an arrow above and below each letter,
+  // tapping a letter selects it, and OK saves. Each has a finger-sized
+  // invisible hit area bigger than what's drawn.
+  addInitialsButtons() {
+    const { width } = this.scale;
+    const parts = [];
+    const tappable = (x, y, w, h, onTap) => {
+      const zone = this.add.zone(x, y, w, h).setInteractive({ useHandCursor: true });
+      zone.on('pointerdown', onTap);
+      parts.push(zone);
+    };
+
+    this.slotTexts.forEach((text, i) => {
+      const select = () => {
+        if (!this.initials) return;
+        this.slot = i;
+        this.refreshInitials();
+      };
+      parts.push(this.add.triangle(text.x, 272, 0, 24, 20, 0, 40, 24, 0xffffff, 0.8)); // Up
+      parts.push(this.add.triangle(text.x, 416, 0, 0, 20, 24, 40, 0, 0xffffff, 0.8)); // Down
+      tappable(text.x, 268, 84, 60, () => {
+        select();
+        if (this.initials) this.changeLetter(1);
+      });
+      tappable(text.x, 420, 84, 60, () => {
+        select();
+        if (this.initials) this.changeLetter(-1);
+      });
+      tappable(text.x, 340, 84, 80, select);
+    });
+
+    const ok = this.add
+      .text(width / 2, 490, 'OK', { ...TEXT_STYLE, fontSize: '24px', backgroundColor: 'rgba(0, 0, 0, 0.4)', padding: { x: 18, y: 10 } })
+      .setOrigin(0.5);
+    parts.push(ok);
+    tappable(width / 2, 490, 160, 64, () => this.saveInitials());
+    return parts;
+  }
+
   changeLetter(step) {
     const index = LETTERS.indexOf(this.initials[this.slot]);
     this.initials[this.slot] = LETTERS[(index + step + LETTERS.length) % LETTERS.length];
@@ -172,7 +221,12 @@ export default class HighScoreScene extends Phaser.Scene {
       this.moveSlot(1);
       return;
     }
-    // Save, clear the entry screen, and bring on the table.
+    this.saveInitials();
+  }
+
+  // Save, clear the entry screen, and bring on the table.
+  saveInitials() {
+    if (!this.initials) return;
     const name = this.initials.join('');
     this.initials = null;
     this.audio?.heal();
@@ -267,7 +321,7 @@ export default class HighScoreScene extends Phaser.Scene {
     this.time.delayedCall(lastDelay + 700, () => {
       this.canLeave = true;
       const prompt = this.add
-        .text(width / 2, height - 24, this.attract ? 'INSERT COIN' : 'PRESS ENTER', {
+        .text(width / 2, height - 24, this.attract ? 'INSERT COIN' : isTouchDevice() ? 'TAP TO CONTINUE' : 'PRESS ENTER', {
           ...TEXT_STYLE,
           fontSize: '14px',
           strokeThickness: 4,
@@ -300,7 +354,8 @@ export default class HighScoreScene extends Phaser.Scene {
 
     // Read every frame so earlier presses (like confirming the initials) are
     // used up and don't count as leaving once the table is shown.
-    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey);
+    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped;
+    this.tapped = false;
     if (this.canLeave && enterPressed) this.returnToTitle();
   }
 }

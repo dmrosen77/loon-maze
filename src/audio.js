@@ -74,13 +74,13 @@ class LakeAudio {
     this.echo.connect(this.musicBus);
 
     // Browsers only allow audio after the player interacts with the page.
+    // (iPhones only count some events, like touchend, as that interaction.)
+    const events = ['keydown', 'pointerdown', 'touchend', 'click'];
     const start = () => {
-      window.removeEventListener('keydown', start);
-      window.removeEventListener('pointerdown', start);
+      events.forEach((event) => window.removeEventListener(event, start));
       this.start();
     };
-    window.addEventListener('keydown', start);
-    window.addEventListener('pointerdown', start);
+    events.forEach((event) => window.addEventListener(event, start));
   }
 
   start() {

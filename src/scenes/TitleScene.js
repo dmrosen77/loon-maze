@@ -10,6 +10,7 @@ import {
 } from '../config.js';
 import { makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import { isTouchDevice, addMuteButton } from '../ui/touch.js';
 import { version } from '../../package.json';
 import loonBigUrl from '../assets/loon-big.png';
 import babyLoonBigUrl from '../assets/baby-loon-big.png';
@@ -87,13 +88,20 @@ export default class TitleScene extends Phaser.Scene {
 
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+    addMuteButton(this, this.audio, this.scale.width - 12, 12);
+
+    // A tap works like Enter (the first one inserts the coin), except on a button.
+    this.tapped = false;
+    this.input.on('pointerdown', (pointer, overObjects) => {
+      if (overObjects.length === 0) this.tapped = true;
+    });
 
     this.cameras.main.fadeIn(500, 0, 0, 0);
     this.startIdleTimer();
   }
 
-  // Attract mode: if nobody presses a key for TITLE_IDLE_MS, show the high
-  // scores (which come back here on their own). Any key restarts the wait.
+  // Attract mode: if nobody presses a key or taps for TITLE_IDLE_MS, show the
+  // high scores (which come back here on their own). Any input restarts the wait.
   startIdleTimer() {
     const restart = () => {
       this.idleTimer?.remove();
@@ -101,6 +109,7 @@ export default class TitleScene extends Phaser.Scene {
     };
     restart();
     this.input.keyboard.on('keydown', restart);
+    this.input.on('pointerdown', restart);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard.off('keydown', restart));
   }
 
@@ -287,8 +296,9 @@ export default class TitleScene extends Phaser.Scene {
     // Browsers block sound until the first key press, so ask for one first,
     // arcade style: any key "inserts a coin" (and turns the sound on).
     this.waitingForSound = Boolean(this.audio) && !this.audio.started;
+    this.startText = isTouchDevice() ? 'TAP TO START' : 'PRESS ENTER TO START';
     this.prompt = this.add
-      .text(width / 2, 530, this.waitingForSound ? 'INSERT COIN' : 'PRESS ENTER TO START', {
+      .text(width / 2, 530, this.waitingForSound ? 'INSERT COIN' : this.startText, {
         ...TEXT_STYLE,
         fontSize: '22px',
       })
@@ -303,7 +313,11 @@ export default class TitleScene extends Phaser.Scene {
     });
 
     this.add
-      .text(width / 2, 578, 'ARROWS: SWIM   M: MUTE', { ...TEXT_STYLE, fontSize: '12px', strokeThickness: 4 })
+      .text(width / 2, 578, isTouchDevice() ? 'DRAG ANYWHERE TO SWIM' : 'ARROWS: SWIM   M: MUTE', {
+        ...TEXT_STYLE,
+        fontSize: '12px',
+        strokeThickness: 4,
+      })
       .setOrigin(0.5)
       .setDepth(DEPTH.text);
 
@@ -332,12 +346,13 @@ export default class TitleScene extends Phaser.Scene {
 
     // JustDown is read every frame so the key press that turns the sound on
     // doesn't also count as pressing Enter to start.
-    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey);
+    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped;
+    this.tapped = false;
     if (this.waitingForSound) {
       if (this.audio.started) {
         this.waitingForSound = false;
         this.audio.coin();
-        this.prompt.setText('PRESS ENTER TO START').setVisible(true);
+        this.prompt.setText(this.startText).setVisible(true);
       }
       return;
     }

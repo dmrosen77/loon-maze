@@ -12,6 +12,11 @@ const config = {
   parent: 'game',
   width: VIEW_WIDTH,
   height: VIEW_HEIGHT,
+  // Scale the whole game to fit the window (or phone screen), centered.
+  scale: {
+    mode: Phaser.Scale.FIT,
+    autoCenter: Phaser.Scale.CENTER_BOTH,
+  },
   backgroundColor: COLORS.water,
   physics: {
     default: 'arcade',

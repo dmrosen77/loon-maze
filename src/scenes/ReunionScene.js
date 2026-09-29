@@ -11,6 +11,7 @@ import {
 } from '../config.js';
 import { HEART, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import { isTouchDevice } from '../ui/touch.js';
 import loonBigUrl from '../assets/loon-big.png';
 import babyLoonBigUrl from '../assets/baby-loon-big.png';
 import HpBar from '../ui/HpBar.js';
@@ -101,6 +102,7 @@ export default class ReunionScene extends Phaser.Scene {
     this.playSequence();
 
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.input.on('pointerdown', () => this.nextLevel()); // A tap works like Enter.
     this.time.delayedCall(REUNION_MS, () => this.nextLevel());
   }
 
@@ -246,7 +248,11 @@ export default class ReunionScene extends Phaser.Scene {
     this.tweens.add({ targets: subtitle, alpha: 1, delay: 700, duration: 500 });
 
     const prompt = this.add
-      .text(width / 2, height - 40, 'PRESS ENTER', { ...TEXT_STYLE, fontSize: '14px', strokeThickness: 4 })
+      .text(width / 2, height - 40, isTouchDevice() ? 'TAP TO CONTINUE' : 'PRESS ENTER', {
+        ...TEXT_STYLE,
+        fontSize: '14px',
+        strokeThickness: 4,
+      })
       .setOrigin(0.5)
       .setVisible(false);
     this.time.addEvent({

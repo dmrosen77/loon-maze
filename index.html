@@ -2,15 +2,58 @@
 <html lang="en">
   <head>
     <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <!-- No pinch-zoom on phones; the game scales itself to fit the screen. -->
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <!-- Full screen when added to a phone's home screen. -->
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black" />
+    <meta name="theme-color" content="#111111" />
     <title>Loon Maze</title>
     <style>
-      html, body { margin: 0; height: 100%; background: #111; }
-      body { display: flex; align-items: center; justify-content: center; }
+      html, body {
+        margin: 0;
+        height: 100%;
+        background: #111;
+        overflow: hidden;
+        /* No scrolling, zooming, text selection or long-press menus on touch. */
+        touch-action: none;
+        -webkit-user-select: none;
+        user-select: none;
+        -webkit-touch-callout: none;
+      }
+      #game {
+        width: 100vw;
+        height: 100vh;
+        height: 100dvh; /* Excludes phone browser toolbars where supported. */
+      }
+      /* The game is wider than tall, so on phones held upright, ask for landscape. */
+      #rotate {
+        display: none;
+        position: fixed;
+        inset: 0;
+        background: #111;
+        color: #ffd54f;
+        font-family: 'Press Start 2P', monospace;
+        font-size: 14px;
+        line-height: 2;
+        text-align: center;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        box-sizing: border-box;
+      }
+      @media (orientation: portrait) and (pointer: coarse) {
+        #rotate { display: flex; }
+      }
     </style>
   </head>
   <body>
     <div id="game"></div>
+    <div id="rotate">Turn your phone sideways to play</div>
     <script type="module" src="/src/main.js"></script>
   </body>
 </html>
