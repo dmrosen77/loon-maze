@@ -1,5 +1,13 @@
 import * as Phaser from 'phaser';
-import { TILE_SIZE, SPRITE_PIXEL_SIZE, WATER_DRIFT, HIGH_SCORE_COUNT, FONT_FAMILY, TITLE_COLORS } from '../config.js';
+import {
+  TILE_SIZE,
+  SPRITE_PIXEL_SIZE,
+  WATER_DRIFT,
+  HIGH_SCORE_COUNT,
+  ATTRACT_HIGH_SCORES_MS,
+  FONT_FAMILY,
+  TITLE_COLORS,
+} from '../config.js';
 import { makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import { loadHighScores, isHighScore, addHighScore } from '../highScores.js';
@@ -27,6 +35,10 @@ const TEXT_STYLE = {
 // initials, arcade style. Then the eagle screeches in carrying the
 // "HIGH SCORES" banner, drops it, and the scores fly in one by one.
 // Started with { score, level }. Enter returns to the title screen.
+//
+// Also the title's attract mode, started with { attract: true }: just the
+// table, then back to the title on its own after ATTRACT_HIGH_SCORES_MS, or
+// straight away on any key.
 export default class HighScoreScene extends Phaser.Scene {
   constructor() {
     super('HighScoreScene');
@@ -38,6 +50,7 @@ export default class HighScoreScene extends Phaser.Scene {
   }
 
   create(data) {
+    this.attract = Boolean(data.attract);
     this.score = data.score ?? 0;
     this.level = data.level ?? 1;
     this.canLeave = false;
@@ -69,11 +82,26 @@ export default class HighScoreScene extends Phaser.Scene {
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
-    if (isHighScore(this.score)) {
+    if (this.attract) {
+      this.showTable(-1);
+      this.time.delayedCall(ATTRACT_HIGH_SCORES_MS, () => this.returnToTitle());
+      const onKey = (event) => {
+        if (!event.repeat) this.returnToTitle();
+      };
+      this.input.keyboard.on('keydown', onKey);
+      this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard.off('keydown', onKey));
+    } else if (isHighScore(this.score)) {
       this.enterInitials();
     } else {
       this.showTable(-1);
     }
+  }
+
+  returnToTitle() {
+    if (this.leaving) return;
+    this.leaving = true;
+    this.cameras.main.fadeOut(500, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('TitleScene'));
   }
 
   // "NEW HIGH SCORE!" and three letter slots. Up/down change the letter,
@@ -227,7 +255,7 @@ export default class HighScoreScene extends Phaser.Scene {
       }
     }
 
-    if (this.highlight < 0) {
+    if (this.highlight < 0 && !this.attract) {
       this.add
         .text(width / 2, ROW_TOP + HIGH_SCORE_COUNT * ROW_SPACING + 12, `YOUR SCORE ${this.score}`, {
           ...TEXT_STYLE,
@@ -239,7 +267,11 @@ export default class HighScoreScene extends Phaser.Scene {
     this.time.delayedCall(lastDelay + 700, () => {
       this.canLeave = true;
       const prompt = this.add
-        .text(width / 2, height - 24, 'PRESS ENTER', { ...TEXT_STYLE, fontSize: '14px', strokeThickness: 4 })
+        .text(width / 2, height - 24, this.attract ? 'INSERT COIN' : 'PRESS ENTER', {
+          ...TEXT_STYLE,
+          fontSize: '14px',
+          strokeThickness: 4,
+        })
         .setOrigin(0.5);
       this.time.addEvent({ delay: 500, loop: true, callback: () => prompt.setVisible(!prompt.visible) });
     });
@@ -269,10 +301,6 @@ export default class HighScoreScene extends Phaser.Scene {
     // Read every frame so earlier presses (like confirming the initials) are
     // used up and don't count as leaving once the table is shown.
     const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey);
-    if (this.canLeave && !this.leaving && enterPressed) {
-      this.leaving = true;
-      this.cameras.main.fadeOut(500, 0, 0, 0);
-      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('TitleScene'));
-    }
+    if (this.canLeave && enterPressed) this.returnToTitle();
   }
 }

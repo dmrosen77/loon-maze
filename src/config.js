@@ -27,6 +27,10 @@ export const SPEED_BONUS_MAX = 1000;
 export const SPEED_BONUS_LOSS = 10;
 // How many scores the high score table keeps (saved in the browser).
 export const HIGH_SCORE_COUNT = 10;
+// Attract mode: after the title sits this long with no key pressed, it shows
+// the high scores for ATTRACT_HIGH_SCORES_MS, then comes back.
+export const TITLE_IDLE_MS = 20000;
+export const ATTRACT_HIGH_SCORES_MS = 12000;
 
 // Top swimming speed, in pixels per second.
 export const LOON_SPEED = 180;

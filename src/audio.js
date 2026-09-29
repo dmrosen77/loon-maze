@@ -266,6 +266,14 @@ class LakeAudio {
     });
   }
 
+  // Classic arcade coin drop: two quick rising notes.
+  coin() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    this.chipNote('square', 988, t, 0.08, 0.1, this.sfxBus); // B5
+    this.chipNote('square', 1319, t + 0.08, 0.35, 0.1, this.sfxBus); // E6
+  }
+
   // Short arcade blip for menus, e.g. picking initials. Higher `semitones` for confirming.
   blip(semitones = 0) {
     if (!this.started) return;

@@ -1,5 +1,13 @@
 import * as Phaser from 'phaser';
-import { TILE_SIZE, SPRITE_PIXEL_SIZE, WATER_DRIFT, FONT_FAMILY, TITLE_COLORS, TITLE_LOON_SPEED } from '../config.js';
+import {
+  TILE_SIZE,
+  SPRITE_PIXEL_SIZE,
+  WATER_DRIFT,
+  FONT_FAMILY,
+  TITLE_COLORS,
+  TITLE_LOON_SPEED,
+  TITLE_IDLE_MS,
+} from '../config.js';
 import { makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import { version } from '../../package.json';
@@ -79,6 +87,30 @@ export default class TitleScene extends Phaser.Scene {
 
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+
+    this.cameras.main.fadeIn(500, 0, 0, 0);
+    this.startIdleTimer();
+  }
+
+  // Attract mode: if nobody presses a key for TITLE_IDLE_MS, show the high
+  // scores (which come back here on their own). Any key restarts the wait.
+  startIdleTimer() {
+    const restart = () => {
+      this.idleTimer?.remove();
+      this.idleTimer = this.time.delayedCall(TITLE_IDLE_MS, () => this.showHighScores());
+    };
+    restart();
+    this.input.keyboard.on('keydown', restart);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard.off('keydown', restart));
+  }
+
+  showHighScores() {
+    if (this.starting) return;
+    this.starting = true; // Ignore Enter while fading out.
+    this.cameras.main.fadeOut(600, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      this.scene.start('HighScoreScene', { attract: true });
+    });
   }
 
   // Moonlight glittering on the water: brief flecks, mostly in a shimmering
@@ -252,10 +284,11 @@ export default class TitleScene extends Phaser.Scene {
 
   drawPrompt() {
     const { width, height } = this.scale;
-    // Browsers block sound until the first key press, so ask for one first.
+    // Browsers block sound until the first key press, so ask for one first,
+    // arcade style: any key "inserts a coin" (and turns the sound on).
     this.waitingForSound = Boolean(this.audio) && !this.audio.started;
     this.prompt = this.add
-      .text(width / 2, 530, this.waitingForSound ? 'PRESS ANY KEY' : 'PRESS ENTER TO START', {
+      .text(width / 2, 530, this.waitingForSound ? 'INSERT COIN' : 'PRESS ENTER TO START', {
         ...TEXT_STYLE,
         fontSize: '22px',
       })
@@ -303,6 +336,7 @@ export default class TitleScene extends Phaser.Scene {
     if (this.waitingForSound) {
       if (this.audio.started) {
         this.waitingForSound = false;
+        this.audio.coin();
         this.prompt.setText('PRESS ENTER TO START').setVisible(true);
       }
       return;
