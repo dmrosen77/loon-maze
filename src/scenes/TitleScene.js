@@ -2,6 +2,7 @@ import * as Phaser from 'phaser';
 import { TILE_SIZE, SPRITE_PIXEL_SIZE, WATER_DRIFT, FONT_FAMILY, TITLE_COLORS, TITLE_LOON_SPEED } from '../config.js';
 import { makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import { version } from '../../package.json';
 import loonBigUrl from '../assets/loon-big.png';
 import babyLoonBigUrl from '../assets/baby-loon-big.png';
 import reedsClumpUrl from '../assets/reeds-clump.png';
@@ -250,7 +251,7 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   drawPrompt() {
-    const { width } = this.scale;
+    const { width, height } = this.scale;
     // Browsers block sound until the first key press, so ask for one first.
     this.waitingForSound = Boolean(this.audio) && !this.audio.started;
     this.prompt = this.add
@@ -271,6 +272,13 @@ export default class TitleScene extends Phaser.Scene {
     this.add
       .text(width / 2, 578, 'ARROWS: SWIM   M: MUTE', { ...TEXT_STYLE, fontSize: '12px', strokeThickness: 4 })
       .setOrigin(0.5)
+      .setDepth(DEPTH.text);
+
+    // Version from package.json, so it updates with each release.
+    this.add
+      .text(width - 10, height - 8, `v${version}`, { ...TEXT_STYLE, fontSize: '10px', strokeThickness: 4 })
+      .setOrigin(1, 1)
+      .setAlpha(0.8)
       .setDepth(DEPTH.text);
   }
 
