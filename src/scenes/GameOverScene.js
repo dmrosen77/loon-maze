@@ -29,7 +29,7 @@ const TEXT_STYLE = {
 };
 
 // Played when the loon runs out of HP: a bald eagle swoops down and carries
-// it off. Enter goes back to the title screen.
+// it off. Enter goes on to the high scores.
 export default class GameOverScene extends Phaser.Scene {
   constructor() {
     super('GameOverScene');
@@ -59,6 +59,7 @@ export default class GameOverScene extends Phaser.Scene {
 
   create(data) {
     this.level = data.level;
+    this.score = data.score ?? 0;
     this.canLeave = false;
     this.leaving = false;
     this.carrier = null;
@@ -227,11 +228,14 @@ export default class GameOverScene extends Phaser.Scene {
       this.tweens.add({ targets: letter, y: height / 2 - 40, duration: 600, delay: i * 80, ease: 'Bounce.easeOut' });
     });
 
-    const subtitle = this.add
-      .text(width / 2, height / 2 + 30, `Carried off on level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px' })
-      .setOrigin(0.5)
-      .setAlpha(0);
-    this.tweens.add({ targets: subtitle, alpha: 1, delay: 900, duration: 500 });
+    const lines = [
+      this.add.text(width / 2, height / 2 + 30, `Carried off on level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px' }),
+      this.add.text(width / 2, height / 2 + 64, `SCORE ${this.score}`, { ...TEXT_STYLE, fontSize: '20px' }),
+    ];
+    lines.forEach((line, i) => {
+      line.setOrigin(0.5).setAlpha(0);
+      this.tweens.add({ targets: line, alpha: 1, delay: 900 + i * 300, duration: 500 });
+    });
 
     this.time.delayedCall(1400, () => {
       this.canLeave = true;
@@ -263,7 +267,7 @@ export default class GameOverScene extends Phaser.Scene {
       this.leaving = true;
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('TitleScene');
+        this.scene.start('HighScoreScene', { score: this.score, level: this.level });
       });
     }
   }

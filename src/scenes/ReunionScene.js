@@ -52,6 +52,10 @@ export default class ReunionScene extends Phaser.Scene {
     this.level = data.level;
     this.hp = data.hp ?? LOON_MAX_HP;
     this.healedHp = Math.min(LOON_MAX_HP, this.hp + REUNION_HEAL);
+    // The score already includes this level's points; they're shown separately.
+    this.score = data.score ?? 0;
+    this.levelPoints = data.levelPoints ?? 0;
+    this.speedBonus = data.speedBonus ?? 0;
     this.leaving = false;
     this.riding = false;
     this.nextWakeTime = 0;
@@ -181,6 +185,21 @@ export default class ReunionScene extends Phaser.Scene {
 
     this.showTitle();
     this.time.delayedCall(1100, () => this.heal());
+    this.time.delayedCall(700, () => this.showPoints());
+  }
+
+  // What this level earned, then the total counting up to include it.
+  showPoints() {
+    const { width } = this.scale;
+    const previous = this.score - this.levelPoints - this.speedBonus;
+    const line = this.add
+      .text(width / 2, 528, '', { ...TEXT_STYLE, fontSize: '14px', strokeThickness: 4 })
+      .setOrigin(0.5);
+    const counter = { value: previous };
+    const show = () =>
+      line.setText(`LEVEL +${this.levelPoints}   SPEED +${this.speedBonus}   SCORE ${Math.round(counter.value)}`);
+    show();
+    this.tweens.add({ targets: counter, value: this.score, delay: 400, duration: 1000, ease: 'Sine.easeOut', onUpdate: show });
   }
 
   // The HP bar grows back, with a "+5 HP" floating up beside it.
@@ -243,7 +262,7 @@ export default class ReunionScene extends Phaser.Scene {
     this.leaving = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('GameScene', { level: this.level + 1, hp: this.healedHp });
+      this.scene.start('GameScene', { level: this.level + 1, hp: this.healedHp, score: this.score });
     });
   }
 

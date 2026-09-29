@@ -5,16 +5,32 @@ import { VOLUME } from './config.js';
 // A major pentatonic, A3 up to C#5: calm, and no two notes clash.
 const SCALE = [0, 2, 4, 7, 9, 12, 14, 16].map((semitones) => 220 * 2 ** (semitones / 12));
 
-// Title theme: 4 bars of eighth notes, in semitones from A4 (null = rest).
-const TITLE_MELODY = [
-  0, 4, 7, 9, 7, 4, 0, null,
-  2, 4, 2, 0, -3, null, 0, null,
-  0, 4, 7, 12, 9, 7, 4, null,
-  2, 4, 7, 4, 0, null, null, null,
-];
-// One bass root per bar, in semitones from A2: A, D, F#, E.
-const TITLE_BASS = [0, 5, -3, 7];
-const TITLE_STEP_SECONDS = 0.22;
+// Chiptunes: bars of eight eighth notes, melody in semitones from A4 (null =
+// rest), one bass root per bar in semitones from A2, and seconds per note.
+const CHIPTUNES = {
+  // Title theme: gentle. Bass A, D, F#, E.
+  title: {
+    melody: [
+      0, 4, 7, 9, 7, 4, 0, null,
+      2, 4, 2, 0, -3, null, 0, null,
+      0, 4, 7, 12, 9, 7, 4, null,
+      2, 4, 7, 4, 0, null, null, null,
+    ],
+    bass: [0, 5, -3, 7],
+    step: 0.22,
+  },
+  // High scores: bright, bouncing arpeggios, faster. Bass A, D, E, A.
+  highscore: {
+    melody: [
+      0, 4, 7, 12, 7, 4, 0, 4,
+      5, 9, 12, 17, 12, 9, 5, 9,
+      7, 11, 14, 19, 14, 11, 7, 11,
+      12, 7, 4, 0, 4, 7, 12, null,
+    ],
+    bass: [0, 5, 7, 0],
+    step: 0.14,
+  },
+};
 
 let instance = null;
 
@@ -79,7 +95,7 @@ class LakeAudio {
     this.master.gain.setTargetAtTime(this.muted ? 0 : VOLUME.master, this.ctx.currentTime, 0.05);
   }
 
-  // Switch to 'title' or 'lake' music, fading out whatever was playing.
+  // Switch to 'title', 'highscore' or 'lake' music, fading out whatever was playing.
   // Before the player has interacted, this just remembers what to play.
   playMusic(name) {
     this.wantedMusic = name;
@@ -94,7 +110,7 @@ class LakeAudio {
 
     const gain = this.ctx.createGain();
     gain.connect(this.musicBus);
-    const stop = name === 'title' ? this.startTitleMusic(gain) : this.startLakeMusic(gain);
+    const stop = CHIPTUNES[name] ? this.startChiptune(CHIPTUNES[name], gain) : this.startLakeMusic(gain);
     this.music = { name, gain, stop };
   }
 
@@ -117,22 +133,22 @@ class LakeAudio {
 
   // A looping chiptune: square-wave melody over a triangle bass line.
   // Notes are scheduled slightly ahead on the audio clock so timing stays tight.
-  startTitleMusic(out) {
+  startChiptune(tune, out) {
     const { ctx } = this;
     let step = 0;
     let nextTime = ctx.currentTime + 0.1;
     let timer;
     const tick = () => {
       while (nextTime < ctx.currentTime + 0.3) {
-        const melody = TITLE_MELODY[step];
-        if (melody !== null) this.chipNote('square', 440 * 2 ** (melody / 12), nextTime, 0.18, 0.07, out);
+        const melody = tune.melody[step];
+        if (melody !== null) this.chipNote('square', 440 * 2 ** (melody / 12), nextTime, tune.step * 0.8, 0.07, out);
         if (step % 2 === 0) {
-          const root = TITLE_BASS[Math.floor(step / 8)];
+          const root = tune.bass[Math.floor(step / 8)];
           const octave = step % 4 === 2 ? 12 : 0;
-          this.chipNote('triangle', 110 * 2 ** ((root + octave) / 12), nextTime, 0.3, 0.18, out);
+          this.chipNote('triangle', 110 * 2 ** ((root + octave) / 12), nextTime, tune.step * 1.4, 0.18, out);
         }
-        step = (step + 1) % TITLE_MELODY.length;
-        nextTime += TITLE_STEP_SECONDS;
+        step = (step + 1) % tune.melody.length;
+        nextTime += tune.step;
       }
       timer = setTimeout(tick, 100);
     };
@@ -248,6 +264,12 @@ class LakeAudio {
       this.chipNote('square', 440 * 2 ** (semitones / 12), t + i * 0.22, 0.4, 0.1, this.sfxBus);
       this.chipNote('triangle', 220 * 2 ** (semitones / 12), t + i * 0.22, 0.45, 0.15, this.sfxBus);
     });
+  }
+
+  // Short arcade blip for menus, e.g. picking initials. Higher `semitones` for confirming.
+  blip(semitones = 0) {
+    if (!this.started) return;
+    this.chipNote('square', 880 * 2 ** (semitones / 12), this.ctx.currentTime, 0.07, 0.08, this.sfxBus);
   }
 
   // Quick rising arpeggio for starting the game.

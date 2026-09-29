@@ -20,6 +20,14 @@ export const MAX_ROWS = 31;
 // How long the reunion cutscene plays before the next level starts (Enter skips it).
 export const REUNION_MS = 8000;
 
+// Scoring. Finishing level N earns LEVEL_POINTS * N, plus a speed bonus that
+// starts at SPEED_BONUS_MAX and drops by SPEED_BONUS_LOSS for each second taken.
+export const LEVEL_POINTS = 1000;
+export const SPEED_BONUS_MAX = 1000;
+export const SPEED_BONUS_LOSS = 10;
+// How many scores the high score table keeps (saved in the browser).
+export const HIGH_SCORE_COUNT = 10;
+
 // Top swimming speed, in pixels per second.
 export const LOON_SPEED = 180;
 // Swimming physics, in pixels per second per second. Paddling speeds the loon

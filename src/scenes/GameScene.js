@@ -7,6 +7,9 @@ import {
   GROWTH_PER_LEVEL,
   MAX_COLS,
   MAX_ROWS,
+  LEVEL_POINTS,
+  SPEED_BONUS_MAX,
+  SPEED_BONUS_LOSS,
   LOON_SPEED,
   LOON_ACCELERATION,
   LOON_GLIDE_DRAG,
@@ -67,13 +70,15 @@ export default class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  // Started with { level, hp }. HP carries over from the last level (via the
-  // reunion cutscene); a new game starts at level 1 with full HP.
+  // Started with { level, hp, score }. HP and score carry over from the last
+  // level (via the reunion cutscene); a new game starts at level 1 with full
+  // HP and no score.
   create(data) {
     this.level = data?.level ?? 1;
     this.reunited = false;
     this.gameOver = false;
     this.hp = data?.hp ?? LOON_MAX_HP;
+    this.score = data?.score ?? 0;
     this.invulnerableUntil = 0;
     this.lastBumpTime = 0;
     this.nextStrokeTime = 0;
@@ -81,6 +86,9 @@ export default class GameScene extends Phaser.Scene {
     this.audio = getLakeAudio(this);
     this.audio?.playMusic('lake');
     this.cameras.main.fadeIn(400, 0, 0, 0);
+    // Set on the first frame: a restarted scene's clock still holds the time
+    // from when the scene last ran until then.
+    this.levelStartTime = null;
 
     const maze = mazeForLevel(this.level);
     const mazeWidth = maze[0].length * TILE_SIZE;
@@ -237,6 +245,11 @@ export default class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(10);
     this.hpBar = new HpBar(this, 12, 40, { width: 160, height: 12, max: LOON_MAX_HP, value: this.hp });
+    this.add
+      .text(this.scale.width - 12, 8, `SCORE ${this.score}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(10);
 
     const { width, height } = this.scale;
     const banner = this.add
@@ -304,7 +317,7 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(500, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('GameOverScene', { level: this.level });
+        this.scene.start('GameOverScene', { level: this.level, score: this.score });
       });
     });
   }
@@ -312,6 +325,11 @@ export default class GameScene extends Phaser.Scene {
   reunite() {
     if (this.reunited || this.gameOver) return;
     this.reunited = true;
+
+    // Level points, plus a bonus for finishing quickly.
+    const seconds = (this.time.now - this.levelStartTime) / 1000;
+    const levelPoints = LEVEL_POINTS * this.level;
+    const speedBonus = Math.max(0, Math.round(SPEED_BONUS_MAX - seconds * SPEED_BONUS_LOSS));
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
 
@@ -320,12 +338,19 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(400, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('ReunionScene', { level: this.level, hp: this.hp });
+        this.scene.start('ReunionScene', {
+          level: this.level,
+          hp: this.hp,
+          score: this.score + levelPoints + speedBonus,
+          levelPoints,
+          speedBonus,
+        });
       });
     });
   }
 
   update(time, delta) {
+    this.levelStartTime ??= time;
     if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
       this.audio?.toggleMute();
     }
