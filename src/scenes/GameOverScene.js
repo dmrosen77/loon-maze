@@ -14,7 +14,9 @@ import eagleBackUrl from '../assets/eagle-wings-back.png';
 const LOON_SCALE = 2;
 const EAGLE_SCALE = 5;
 
-const LOON_SPOT = { x: 440, y: 350 };
+// Where the loon floats: just right of center.
+const LOON_SPOT_RIGHT_OF_CENTER = 20;
+const LOON_SPOT_Y = 350;
 // How far behind the eagle's center it holds the loon. Prey carried in the
 // talons trails back under the tail, so from above most of the loon shows.
 const TALONS_BEHIND = 150;
@@ -80,10 +82,11 @@ export default class GameOverScene extends Phaser.Scene {
       .setTileScale(2)
       .setTint(0x6878a0);
 
-    this.loon = this.add.image(LOON_SPOT.x, LOON_SPOT.y, 'loon-big').setScale(LOON_SCALE);
+    this.loonSpot = { x: this.scale.width / 2 + LOON_SPOT_RIGHT_OF_CENTER, y: LOON_SPOT_Y };
+    this.loon = this.add.image(this.loonSpot.x, this.loonSpot.y, 'loon-big').setScale(LOON_SCALE);
     this.tweens.add({
       targets: this.loon,
-      y: LOON_SPOT.y + 4,
+      y: this.loonSpot.y + 4,
       duration: 900,
       ease: 'Sine.easeInOut',
       yoyo: true,
@@ -128,7 +131,7 @@ export default class GameOverScene extends Phaser.Scene {
   // A red "!" pops up over the loon.
   alert() {
     const mark = this.add
-      .text(LOON_SPOT.x + 85, LOON_SPOT.y - 75, '!', { ...TEXT_STYLE, fontSize: '48px', color: '#e8475f' })
+      .text(this.loonSpot.x + 85, this.loonSpot.y - 75, '!', { ...TEXT_STYLE, fontSize: '48px', color: '#e8475f' })
       .setOrigin(0.5)
       .setScale(0);
     this.tweens.add({ targets: mark, scale: 1, duration: 250, ease: 'Back.easeOut' });
@@ -142,10 +145,10 @@ export default class GameOverScene extends Phaser.Scene {
   swoopIn() {
     this.audio?.screech();
     const start = { x: this.scale.width + 250, y: 60 };
-    const heading = Phaser.Math.Angle.BetweenPoints(start, LOON_SPOT);
+    const heading = Phaser.Math.Angle.BetweenPoints(start, this.loonSpot);
     const hover = {
-      x: LOON_SPOT.x + Math.cos(heading) * TALONS_BEHIND,
-      y: LOON_SPOT.y + Math.sin(heading) * TALONS_BEHIND,
+      x: this.loonSpot.x + Math.cos(heading) * TALONS_BEHIND,
+      y: this.loonSpot.y + Math.sin(heading) * TALONS_BEHIND,
     };
     this.eagle
       .setPosition(start.x, start.y)
@@ -168,7 +171,7 @@ export default class GameOverScene extends Phaser.Scene {
   // Splash, feathers, and the loon is snatched up.
   grab() {
     this.cameras.main.shake(250, 0.012);
-    this.splash.emitParticleAt(LOON_SPOT.x, LOON_SPOT.y, 30);
+    this.splash.emitParticleAt(this.loonSpot.x, this.loonSpot.y, 30);
     this.feathers.emitParticleAt(this.eagle.x, this.eagle.y, 8);
     this.audio?.bump();
     this.audio?.wingFlap();

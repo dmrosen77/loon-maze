@@ -26,7 +26,8 @@ const CHICK_SCALE = 2;
 
 // The loon swims back and forth along this line, turning around off-screen.
 const LANE_Y = 380;
-const LANE_ENDS = { left: -260, right: 1100 };
+// How far past each edge of the screen it swims before turning around.
+const LANE_OVERSHOOT = 260;
 // Where the chick rides on its parent's back, and where the wake starts,
 // relative to the parent's center (at ART_SCALE, facing right).
 const CHICK_ON_BACK = { x: -25, y: -6 };
@@ -141,7 +142,7 @@ export default class TitleScene extends Phaser.Scene {
       loop: true,
       callback: () => {
         const inMoonPath = Math.random() < 0.6;
-        const x = inMoonPath ? 650 + Phaser.Math.Between(-70, 70) : Phaser.Math.Between(0, width);
+        const x = inMoonPath ? width * 0.77 + Phaser.Math.Between(-70, 70) : Phaser.Math.Between(0, width);
         const glint = this.add
           .rectangle(x, Phaser.Math.Between(0, height), Phaser.Math.Between(2, 4) * 3, 3, TITLE_COLORS.glint)
           .setAlpha(0)
@@ -159,13 +160,17 @@ export default class TitleScene extends Phaser.Scene {
 
   // Lily pads kept clear of the loon's lane, each gently turning and bobbing.
   addLilyPads() {
+    // Across the screen as fractions of its width, so they spread out on wide
+    // (phone) screens instead of bunching in the middle.
+    const { width } = this.scale;
     const pads = [
-      ['lily-pad-flower', 210, 250, 10],
-      ['lily-pad', 650, 245, -25],
-      ['lily-pad-small', 215, 500, 40],
-      ['lily-pad-small', 630, 505, -60],
+      ['lily-pad-flower', 0.25, 250, 10],
+      ['lily-pad', 0.775, 245, -25],
+      ['lily-pad-small', 0.255, 500, 40],
+      ['lily-pad-small', 0.75, 505, -60],
     ];
-    pads.forEach(([key, x, y, angle], i) => {
+    pads.forEach(([key, across, y, angle], i) => {
+      const x = width * across;
       const pad = this.add.image(x, y, key).setScale(ART_SCALE).setAngle(angle).setDepth(DEPTH.pads);
       this.tweens.add({
         targets: pad,
@@ -345,7 +350,8 @@ export default class TitleScene extends Phaser.Scene {
 
     // Swim across, turning around once off-screen.
     this.loons.x += (this.swimDirection * TITLE_LOON_SPEED * delta) / 1000;
-    if (this.loons.x > LANE_ENDS.right || this.loons.x < LANE_ENDS.left) {
+    const overshoot = this.loons.x > this.scale.width + LANE_OVERSHOOT || this.loons.x < -LANE_OVERSHOOT;
+    if (overshoot) {
       this.swimDirection *= -1;
       this.loons.setScale(this.swimDirection, 1);
     }

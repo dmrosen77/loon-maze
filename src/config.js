@@ -2,8 +2,11 @@
 export const TILE_SIZE = 40;
 
 // Size of the game window in pixels. Mazes bigger than this scroll with the loon.
+// On touch screens the width grows to match the (sideways) screen's shape, up
+// to MAX_VIEW_WIDTH, so phones don't get black bars; the height stays the same.
 export const VIEW_WIDTH = 840;
 export const VIEW_HEIGHT = 600;
+export const MAX_VIEW_WIDTH = 1400;
 
 // true: a new random maze every level. false: every level uses the hand-made
 // maze in src/mazes/maze1.js (handy for testing a layout).

@@ -27,7 +27,10 @@ const PARENT_BILL_TIP = 240;
 const PARENT_TAIL = -230;
 const PARENT_BACK = { x: -20, y: -14 };
 
-const PARENT_REST = { x: 330, y: 330 };
+// Where the parent settles: a little left of center, leaving room for the
+// chick to paddle in from the right.
+const PARENT_REST_Y = 330;
+const PARENT_REST_LEFT_OF_CENTER = 90;
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -70,6 +73,7 @@ export default class ReunionScene extends Phaser.Scene {
     makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
 
     const { width, height } = this.scale;
+    this.parentRestX = width / 2 - PARENT_REST_LEFT_OF_CENTER;
     // The lake at night: the in-game water, doubled in scale to match the big
     // sprites' chunkier pixels and tinted darker.
     this.water = this.add
@@ -86,10 +90,11 @@ export default class ReunionScene extends Phaser.Scene {
       emitting: false,
     });
 
-    this.parent = this.add.image(-300, PARENT_REST.y, 'loon-big').setScale(BIG_PIXEL);
-    this.baby = this.add.image(width + 100, PARENT_REST.y - 30, 'baby-loon-big').setScale(CHICK_PIXEL).setFlipX(true);
+    this.parent = this.add.image(-300, PARENT_REST_Y, 'loon-big').setScale(BIG_PIXEL);
+    this.baby = this.add.image(width + 100, PARENT_REST_Y - 30, 'baby-loon-big').setScale(CHICK_PIXEL).setFlipX(true);
 
-    this.hpBar = new HpBar(this, 250, 490, {
+    // The HP bar (label, gap and 300px bar: 340px in all) is centered.
+    this.hpBar = new HpBar(this, width / 2 - 170, 490, {
       width: 300,
       height: 16,
       max: LOON_MAX_HP,
@@ -110,14 +115,14 @@ export default class ReunionScene extends Phaser.Scene {
     // The parent glides in from the left and settles into a gentle bob.
     this.tweens.add({
       targets: this.parent,
-      x: PARENT_REST.x,
+      x: this.parentRestX,
       duration: 2000,
       ease: 'Sine.easeOut',
     });
     this.bob(this.parent, 0);
 
     // The chick paddles in from the right to meet the parent's bill.
-    const meetX = PARENT_REST.x + PARENT_BILL_TIP + 80;
+    const meetX = this.parentRestX + PARENT_BILL_TIP + 80;
     this.tweens.add({
       targets: this.baby,
       x: meetX,
@@ -282,7 +287,7 @@ export default class ReunionScene extends Phaser.Scene {
     }
 
     // A wake streams from the parent's tail while it's still gliding in.
-    if (this.parent.x < PARENT_REST.x - 5 && time >= this.nextWakeTime) {
+    if (this.parent.x < this.parentRestX - 5 && time >= this.nextWakeTime) {
       this.wake.emitParticleAt(this.parent.x + PARENT_TAIL, this.parent.y + Phaser.Math.Between(-30, 30), 2);
       this.nextWakeTime = time + 30;
     }
