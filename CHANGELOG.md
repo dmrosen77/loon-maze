@@ -6,6 +6,11 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.3.1] - 2026-09-29
+
+### Changed
+- README: how world high scores work and how to run the score server, with a screenshot of the world table.
+
 ## [1.3.0] - 2026-09-29
 
 ### Added
@@ -63,7 +68,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.3.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.3.1...HEAD
+[1.3.1]: https://github.com/dmrosen77/loon-maze/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/dmrosen77/loon-maze/compare/v1.2.0...v1.3.0
 [1.2.0]: https://github.com/dmrosen77/loon-maze/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/dmrosen77/loon-maze/compare/v1.0.0...v1.1.0
