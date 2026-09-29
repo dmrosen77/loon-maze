@@ -11,7 +11,7 @@ import {
 import { makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import { isTouchDevice } from '../ui/touch.js';
-import { loadHighScores, isHighScore, addHighScore } from '../highScores.js';
+import { loadHighScores, addHighScore, qualifies, fetchWorldScores, submitWorldScore } from '../highScores.js';
 import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
 
@@ -40,6 +40,9 @@ const TEXT_STYLE = {
 // Also the title's attract mode, started with { attract: true }: just the
 // table, then back to the title on its own after ATTRACT_HIGH_SCORES_MS, or
 // straight away on any key.
+//
+// It shows the world table from the score server when there is one, and this
+// device's table otherwise (see src/highScores.js).
 export default class HighScoreScene extends Phaser.Scene {
   constructor() {
     super('HighScoreScene');
@@ -89,7 +92,6 @@ export default class HighScoreScene extends Phaser.Scene {
     this.cameras.main.fadeIn(500, 0, 0, 0);
 
     if (this.attract) {
-      this.showTable(-1);
       this.time.delayedCall(ATTRACT_HIGH_SCORES_MS, () => this.returnToTitle());
       const onKey = (event) => {
         if (!event.repeat) this.returnToTitle();
@@ -97,11 +99,24 @@ export default class HighScoreScene extends Phaser.Scene {
       this.input.keyboard.on('keydown', onKey);
       this.input.on('pointerdown', () => this.returnToTitle());
       this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => this.input.keyboard.off('keydown', onKey));
-    } else if (isHighScore(this.score)) {
-      this.enterInitials();
-    } else {
-      this.showTable(-1);
     }
+
+    // Ask the score server for the world table first (it answers in a
+    // moment, or not at all where there's no server), then carry on with
+    // whichever table we have.
+    this.worldScores = null;
+    fetchWorldScores().then((world) => {
+      if (this.leaving || !this.sys.isActive()) return; // Left before it answered.
+      this.worldScores = world;
+      this.useTable(world ?? loadHighScores(), world ? 'WORLD' : 'THIS DEVICE');
+      if (!this.attract && qualifies(this.tableScores, this.score)) this.enterInitials();
+      else this.showTable(-1);
+    });
+  }
+
+  useTable(scores, label) {
+    this.tableScores = scores;
+    this.tableLabel = label;
   }
 
   returnToTitle() {
@@ -224,21 +239,30 @@ export default class HighScoreScene extends Phaser.Scene {
     this.saveInitials();
   }
 
-  // Save, clear the entry screen, and bring on the table.
+  // Save (on this device, and to the world table when there is one), clear
+  // the entry screen, and bring on the table.
   saveInitials() {
     if (!this.initials) return;
-    const name = this.initials.join('');
+    const entry = { name: this.initials.join(''), score: this.score, level: this.level };
     this.initials = null;
     this.audio?.heal();
-    const rank = addHighScore({ name, score: this.score, level: this.level });
-    this.tweens.add({
-      targets: this.initialsParts,
-      alpha: 0,
-      duration: 400,
-      onComplete: () => {
-        this.initialsParts.forEach((part) => part.destroy());
-        this.showTable(rank);
-      },
+    const localRank = addHighScore(entry);
+    const saved = this.worldScores ? submitWorldScore(entry) : Promise.resolve(null);
+
+    const fadedOut = new Promise((resolve) => {
+      this.tweens.add({ targets: this.initialsParts, alpha: 0, duration: 400, onComplete: resolve });
+    });
+    Promise.all([saved, fadedOut]).then(([world]) => {
+      if (!this.sys.isActive()) return;
+      this.initialsParts.forEach((part) => part.destroy());
+      if (world) {
+        this.useTable(world.scores, 'WORLD');
+        this.showTable(world.rank);
+      } else {
+        // No server, or it turned the score down: show this device's table.
+        this.useTable(loadHighScores(), 'THIS DEVICE');
+        this.showTable(localRank);
+      }
     });
   }
 
@@ -284,13 +308,19 @@ export default class HighScoreScene extends Phaser.Scene {
   dropBanner() {
     this.carryingBanner = false;
     this.tweens.add({ targets: this.banner, x: this.scale.width / 2, y: 60, duration: 500, ease: 'Bounce.easeOut' });
+    // Which table this is: the world's, or just this device's.
+    const label = this.add
+      .text(this.scale.width / 2, 104, this.tableLabel, { ...TEXT_STYLE, fontSize: '12px', strokeThickness: 4 })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    this.tweens.add({ targets: label, alpha: 1, delay: 400, duration: 400 });
     this.time.delayedCall(300, () => this.flyInRows());
   }
 
   // Each row swoops in from the right, one after another.
   flyInRows() {
     const { width, height } = this.scale;
-    const scores = loadHighScores();
+    const scores = this.tableScores;
     let lastDelay = 0;
     for (let i = 0; i < HIGH_SCORE_COUNT; i++) {
       const entry = scores[i];

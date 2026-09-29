@@ -1,0 +1,23 @@
+# systemd service for the Loon Maze world high score server.
+# Installed to /etc/systemd/system/ by scripts/deploy.sh.
+[Unit]
+Description=Loon Maze world high scores
+After=network.target
+
+[Service]
+Type=simple
+# A dedicated user with no login or home, so the service can't touch anything
+# but its own scores file. (deploy.sh creates it.)
+User=loon-scores
+Group=loon-scores
+WorkingDirectory=/opt/loon-maze-scores
+ExecStart=/usr/bin/node /opt/loon-maze-scores/server/scores-server.js
+# Only reachable from inside the container; nginx passes /api/ requests to it.
+Environment=HOST=127.0.0.1
+Environment=PORT=3010
+Environment=DATA_DIR=/var/lib/loon-maze
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target

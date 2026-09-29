@@ -8,7 +8,9 @@
     "dev": "vite",
     "dev:phone": "vite --host",
     "build": "vite build",
-    "preview": "vite preview"
+    "preview": "vite preview",
+    "deploy": "bash scripts/deploy.sh",
+    "scores-server": "node server/scores-server.js"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",
