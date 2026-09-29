@@ -448,6 +448,14 @@ class LakeAudio {
     this.hurt();
   }
 
+  // A frog's two quick croaks as it hops off its lily pad.
+  ribbit() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    this.chipNote('square', 196, t, 0.06, 0.07, this.sfxBus);
+    this.chipNote('square', 165, t + 0.09, 0.08, 0.07, this.sfxBus);
+  }
+
   // The parent's wail, then the baby's higher, shorter reply.
   reunite() {
     if (!this.started) return;

@@ -48,6 +48,7 @@ import {
   LOON_TOP_FEET_OUT,
   LOON_TOP_FEET_IN,
   BABY_LOON_TOP,
+  HEART,
   REED_TILE_VARIANTS,
   REED_SWAY_FRAMES,
   WATER_SIDE,
@@ -56,6 +57,10 @@ import {
   makeWaterTexture,
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
+import mazeInfo from '../mazes/mazeInfo.js';
+import Lighting, { timeOfDayForLevel } from '../game/Lighting.js';
+import Decor from '../game/Decor.js';
+import { ripple, hitFlash, heartBurst } from '../game/effects.js';
 import HpBar from '../ui/HpBar.js';
 import AirBar from '../ui/AirBar.js';
 import { TouchStick, addMuteButton, addDiveButton, isTouchDevice } from '../ui/touch.js';
@@ -67,6 +72,25 @@ const TEXT_STYLE = {
   strokeThickness: 6,
   align: 'center',
   lineSpacing: 16,
+};
+
+// Layers, bottom to top. The time-of-day tint covers everything below it;
+// night glows, pop-up effects and the HUD sit above it.
+const DEPTH = {
+  water: 0,
+  pads: 1,
+  wake: 2,
+  reeds: 3,
+  ripples: 4,
+  chick: 5,
+  loon: 6,
+  bubbles: 7,
+  critters: 8,
+  tint: 9,
+  glow: 9.5,
+  effects: 9.6,
+  flash: 9.8,
+  hud: 10,
 };
 
 // The dive tier for a level: the last one it has reached (the first one for
@@ -122,13 +146,14 @@ export default class GameScene extends Phaser.Scene {
 
     const maze = this.lesson ? diveLessonMaze : mazeForLevel(this.level);
     this.maze = maze; // Kept for corner assist and diving, which need to know where the walls are.
+    this.info = mazeInfo(maze); // Open tiles, the path to the chick and so on, for placing things.
     const mazeWidth = maze[0].length * TILE_SIZE;
     const mazeHeight = maze.length * TILE_SIZE;
 
     this.createSprites();
 
     // The lake: the maze, or the whole screen if the maze is smaller.
-    // Drawing order sets layering: water, then wake, then reeds, then loons.
+    // Layering is set by DEPTH.
     const camera = this.cameras.main;
     const lakeWidth = Math.max(mazeWidth, camera.width);
     const lakeHeight = Math.max(mazeHeight, camera.height);
@@ -138,8 +163,14 @@ export default class GameScene extends Phaser.Scene {
       lakeWidth,
       lakeHeight,
     );
-    this.water = this.add.tileSprite(lake.x, lake.y, lake.width, lake.height, 'water').setOrigin(0);
+    // Some times of day recolor the water itself.
+    const { name, water } = timeOfDayForLevel(this.level);
+    const waterKey = water ? `water-${name}` : 'water';
+    if (water) makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE, { key: waterKey, palette: water });
+    this.water = this.add.tileSprite(lake.x, lake.y, lake.width, lake.height, waterKey).setOrigin(0).setDepth(DEPTH.water);
     this.createWake();
+    // The camera has to be on the loon's start before placing things "in view".
+    camera.setBounds(lake.x, lake.y, lake.width, lake.height);
 
     const reeds = this.physics.add.staticGroup();
     this.reedTiles = [];
@@ -165,7 +196,7 @@ export default class GameScene extends Phaser.Scene {
 
     // The chick faces roughly the way its parent will come from, snapped to
     // up/down/left/right since pixel art looks ragged at odd angles.
-    this.baby = this.add.image(babyStart.x, babyStart.y, 'baby-loon-top');
+    this.baby = this.add.image(babyStart.x, babyStart.y, 'baby-loon-top').setDepth(DEPTH.chick);
     const towardParent = Phaser.Math.Angle.BetweenPoints(babyStart, loonStart);
     this.baby.rotation = Phaser.Math.Snap.To(towardParent, Math.PI / 2);
     this.physics.add.existing(this.baby, true);
@@ -173,7 +204,7 @@ export default class GameScene extends Phaser.Scene {
     // The bounds leave out the maze's outer ring of reeds, so a diving loon
     // can't swim under it to the edge of the lake.
     this.physics.world.setBounds(TILE_SIZE, TILE_SIZE, mazeWidth - 2 * TILE_SIZE, mazeHeight - 2 * TILE_SIZE);
-    this.loon = this.add.sprite(loonStart.x, loonStart.y, 'loon-top-feet-in');
+    this.loon = this.add.sprite(loonStart.x, loonStart.y, 'loon-top-feet-in').setDepth(DEPTH.loon);
     this.physics.add.existing(this.loon);
     this.loon.body.setSize(LOON_BODY_SIZE, LOON_BODY_SIZE);
     this.loon.body.setCollideWorldBounds(true);
@@ -187,8 +218,19 @@ export default class GameScene extends Phaser.Scene {
     this.reedCollider = this.physics.add.collider(this.loon, reeds, this.bump, null, this);
     this.physics.add.overlap(this.loon, this.baby, this.reunite, () => !this.diving, this);
 
-    camera.setBounds(lake.x, lake.y, lake.width, lake.height);
     camera.startFollow(this.loon, true);
+    camera.centerOn(loonStart.x, loonStart.y);
+
+    this.decor = new Decor(this, this.info, {
+      padDepth: DEPTH.pads,
+      critterDepth: DEPTH.critters,
+      onFrogSplash: (x, y) => {
+        this.wake.emitParticleAt(x, y, 6);
+        ripple(this, x, y, { depth: DEPTH.ripples, radius: 14 });
+        this.audio?.ribbit();
+      },
+    });
+    this.lighting = new Lighting(this, this.info, { tintDepth: DEPTH.tint, glowDepth: DEPTH.glow });
     this.showLevelText();
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -205,6 +247,7 @@ export default class GameScene extends Phaser.Scene {
     makePixelTexture(this, 'loon-top-feet-in', LOON_TOP_FEET_IN, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'baby-loon-top', BABY_LOON_TOP, SPRITE_PIXEL_SIZE);
     makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
+    makePixelTexture(this, 'heart-small', HEART, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'bubble', { palette: { w: '#d8f1ff' }, rows: ['.w.', 'w.w', '.w.'] }, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
     if (!this.anims.exists('loon-paddle')) {
@@ -233,7 +276,7 @@ export default class GameScene extends Phaser.Scene {
     }
 
     const upright = 1;
-    const image = this.add.image(x, y, frames[upright]);
+    const image = this.add.image(x, y, frames[upright]).setDepth(DEPTH.reeds);
     reeds.add(image);
     image.body.setSize(TILE_SIZE, TILE_SIZE); // The image includes overhang; walls don't.
     this.reedTiles.push({ image, frames, frame: upright });
@@ -264,11 +307,11 @@ export default class GameScene extends Phaser.Scene {
       scale: { start: 1, end: 0.5 },
       alpha: { start: 0.9, end: 0 },
       emitting: false,
-    });
+    }).setDepth(DEPTH.wake);
   }
 
-  // Bubbles rising from the diving loon: each swells a little and pops. Made
-  // after the reeds, so they show over them while the loon is underneath.
+  // Bubbles rising from the diving loon: each swells a little and pops. They
+  // show over the reeds while the loon is underneath.
   createBubbles() {
     this.bubbles = this.add.particles(0, 0, 'bubble', {
       lifespan: { min: 400, max: 800 },
@@ -276,7 +319,7 @@ export default class GameScene extends Phaser.Scene {
       scale: { start: 0.8, end: 1.5 },
       alpha: { start: 0.9, end: 0 },
       emitting: false,
-    });
+    }).setDepth(DEPTH.bubbles);
   }
 
   // A point behind the loon's center (and optionally to one side), following
@@ -297,7 +340,7 @@ export default class GameScene extends Phaser.Scene {
     this.add
       .text(12, 8, title, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setScrollFactor(0)
-      .setDepth(10);
+      .setDepth(DEPTH.hud);
     this.hpBar = new HpBar(this, 12, 40, { width: 160, height: 12, max: LOON_MAX_HP, value: this.hp });
     if (this.canDive) {
       this.airBar = new AirBar(this, 12, 60, this.hpBar.right - 160, {
@@ -312,38 +355,57 @@ export default class GameScene extends Phaser.Scene {
       .text(this.scale.width - 12, 8, `SCORE ${this.score}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setOrigin(1, 0)
       .setScrollFactor(0)
-      .setDepth(10);
+      .setDepth(DEPTH.hud);
 
     const { width, height } = this.scale;
     const banner = this.add
       .text(width / 2, height / 2, this.lesson ? 'DIVE LESSON' : `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '48px' })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(10);
+      .setDepth(DEPTH.hud);
+    const timeOfDay = this.add
+      .text(width / 2, height / 2 + 42, this.lighting.phase.name, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(DEPTH.hud);
     this.tweens.add({
-      targets: banner,
+      targets: [banner, timeOfDay],
       alpha: 0,
       delay: 800,
       duration: 700,
-      onComplete: () => banner.destroy(),
+      onComplete: () => {
+        banner.destroy();
+        timeOfDay.destroy();
+      },
     });
 
-    // An extra dive per level starts on this level (after the first tier).
+    // News for this level, under the banner.
+    const callouts = [];
     if (!this.lesson && this.diveTier !== DIVE_TIERS[0] && this.diveTier.level === this.level) {
-      const moreAir = this.add
-        .text(width / 2, height / 2 + 52, 'EXTRA DIVE!', { ...TEXT_STYLE, fontSize: '20px', color: '#4fb3ff' })
+      callouts.push('EXTRA DIVE!'); // An extra dive per level starts here (after the first tier).
+    }
+    this.showCallouts(callouts);
+  }
+
+  // Blue lines of news under the level banner, lingering a little longer.
+  showCallouts(lines) {
+    if (lines.length === 0) return;
+    const { width, height } = this.scale;
+    this.audio?.heal();
+    lines.forEach((line, i) => {
+      const callout = this.add
+        .text(width / 2, height / 2 + 80 + i * 32, line, { ...TEXT_STYLE, fontSize: '20px', color: '#4fb3ff' })
         .setOrigin(0.5)
         .setScrollFactor(0)
-        .setDepth(10);
-      this.audio?.heal();
+        .setDepth(DEPTH.hud);
       this.tweens.add({
-        targets: moreAir,
+        targets: callout,
         alpha: 0,
         delay: 1600,
         duration: 700,
-        onComplete: () => moreAir.destroy(),
+        onComplete: () => callout.destroy(),
       });
-    }
+    });
   }
 
   // How to dive, along the bottom of the screen for the whole lesson.
@@ -358,7 +420,7 @@ export default class GameScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(10);
+      .setDepth(DEPTH.hud);
   }
 
   // The collider fires every frame while pushing into reeds, so only count a
@@ -369,6 +431,7 @@ export default class GameScene extends Phaser.Scene {
     const now = this.time.now;
     if (now - this.lastBumpTime > 200 && this.impactSpeed >= LOON_HIT_MIN_SPEED) {
       this.audio?.bump();
+      ripple(this, this.loon.x, this.loon.y, { depth: DEPTH.ripples, radius: 16 });
       this.takeDamage(now);
     }
     this.lastBumpTime = now;
@@ -382,6 +445,7 @@ export default class GameScene extends Phaser.Scene {
     this.invulnerableUntil = now + LOON_INVULNERABLE_MS;
     this.hpBar.setValue(this.hp);
     this.cameras.main.shake(120, 0.006);
+    hitFlash(this, { depth: DEPTH.flash });
 
     if (this.hp <= 0) {
       this.loseGame();
@@ -435,6 +499,8 @@ export default class GameScene extends Phaser.Scene {
     const speedBonus = Math.max(0, Math.round(SPEED_BONUS_MAX - seconds * SPEED_BONUS_LOSS));
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
+    heartBurst(this, this.baby.x, this.baby.y, 'heart-small', { depth: DEPTH.effects });
+    ripple(this, this.baby.x, this.baby.y, { depth: DEPTH.ripples, radius: 28, duration: 800 });
 
     // A beat to see the two touch, then fade into the reunion cutscene, which
     // starts the next level when it's done.
@@ -462,7 +528,7 @@ export default class GameScene extends Phaser.Scene {
       .text(width / 2, height / 2, 'YOU CAN DIVE!', { ...TEXT_STYLE, fontSize: '36px', color: '#4fb3ff' })
       .setOrigin(0.5)
       .setScrollFactor(0)
-      .setDepth(10);
+      .setDepth(DEPTH.hud);
     this.time.delayedCall(1600, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
@@ -522,6 +588,7 @@ export default class GameScene extends Phaser.Scene {
     this.tweens.killTweensOf(this.loon); // Any blinking from a hit.
     this.loon.setTint(DIVE_SHADOW_TINT).setAlpha(DIVE_SHADOW_ALPHA).setScale(0.9);
     this.wake.emitParticleAt(this.loon.x, this.loon.y, 8);
+    ripple(this, this.loon.x, this.loon.y, { depth: DEPTH.ripples });
     this.audio?.dive();
   }
 
@@ -531,6 +598,7 @@ export default class GameScene extends Phaser.Scene {
     this.reedCollider.active = true;
     this.loon.clearTint().setAlpha(1).setScale(1);
     this.wake.emitParticleAt(this.loon.x, this.loon.y, 8);
+    ripple(this, this.loon.x, this.loon.y, { depth: DEPTH.ripples });
     this.audio?.surface();
   }
 
@@ -552,6 +620,7 @@ export default class GameScene extends Phaser.Scene {
     // Whole pixels only, so the pixel art doesn't shimmer as it drifts.
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
     this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
+    this.decor.update(this.loon);
 
     if (this.gameOver || this.reunited) return;
 

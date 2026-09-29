@@ -9,6 +9,7 @@ import {
   TITLE_IDLE_MS,
 } from '../config.js';
 import { makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
+import { startGlints, addFirefly } from '../art/lakeAmbience.js';
 import { getLakeAudio } from '../audio.js';
 import { isTouchDevice, addMuteButton } from '../ui/touch.js';
 import { version } from '../../package.json';
@@ -137,25 +138,15 @@ export default class TitleScene extends Phaser.Scene {
   // column under the (off-screen) moon to the upper right.
   startGlints() {
     const { width, height } = this.scale;
-    this.time.addEvent({
-      delay: 50,
-      loop: true,
-      callback: () => {
+    startGlints(
+      this,
+      () => {
         const inMoonPath = Math.random() < 0.6;
         const x = inMoonPath ? width * 0.77 + Phaser.Math.Between(-70, 70) : Phaser.Math.Between(0, width);
-        const glint = this.add
-          .rectangle(x, Phaser.Math.Between(0, height), Phaser.Math.Between(2, 4) * 3, 3, TITLE_COLORS.glint)
-          .setAlpha(0)
-          .setDepth(DEPTH.glints);
-        this.tweens.add({
-          targets: glint,
-          alpha: inMoonPath ? 0.9 : 0.5,
-          duration: 350,
-          yoyo: true,
-          onComplete: () => glint.destroy(),
-        });
+        return { x, y: Phaser.Math.Between(0, height), bright: inMoonPath };
       },
-    });
+      { depth: DEPTH.glints },
+    );
   }
 
   // Lily pads kept clear of the loon's lane, each gently turning and bobbing.
@@ -257,28 +248,7 @@ export default class TitleScene extends Phaser.Scene {
     const homes = [[90, 80], [width - 90, 90], [100, height - 80], [width - 100, height - 80]];
     for (let i = 0; i < 16; i++) {
       const [hx, hy] = homes[i % homes.length];
-      const firefly = this.add
-        .rectangle(hx + Phaser.Math.Between(-90, 90), hy + Phaser.Math.Between(-70, 70), 4, 4, TITLE_COLORS.firefly)
-        .setDepth(DEPTH.fireflies);
-      this.tweens.add({
-        targets: firefly,
-        alpha: 0.1,
-        duration: Phaser.Math.Between(500, 1300),
-        delay: Phaser.Math.Between(0, 1200),
-        yoyo: true,
-        repeat: -1,
-      });
-      const wander = () => {
-        this.tweens.add({
-          targets: firefly,
-          x: hx + Phaser.Math.Between(-110, 110),
-          y: hy + Phaser.Math.Between(-80, 80),
-          duration: Phaser.Math.Between(1800, 3500),
-          ease: 'Sine.easeInOut',
-          onComplete: wander,
-        });
-      };
-      wander();
+      addFirefly(this, hx, hy, { depth: DEPTH.fireflies, rangeX: 100, rangeY: 75 });
     }
   }
 

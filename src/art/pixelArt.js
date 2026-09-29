@@ -78,6 +78,75 @@ export const HEART = {
   ],
 };
 
+// Lake life dotted around the maze's open water (src/game/Decor.js), at the
+// in-game sprite scale. A lily pad with its notch, the same pad with a water
+// lily, a frog seen from above (facing up), and a dragonfly facing right in
+// two wingbeat frames (wings spread, wings blurred short).
+const LILY_PALETTE = { d: '#2c5f27', g: '#4a8f37', l: '#79bd55', p: '#f4b6c8', w: '#fff4f6', y: '#f5d142' };
+export const LILY_PAD = {
+  palette: LILY_PALETTE,
+  rows: [
+    '...dddd...',
+    '.ddggggdd.',
+    '.dglggggd.',
+    'dglgggggd.',
+    'dggggggg..',
+    'dgggggg...',
+    'dggggggg..',
+    'dgggggggd.',
+    '.dgggggdd.',
+    '..dddddd..',
+  ],
+};
+export const LILY_PAD_FLOWER = {
+  palette: LILY_PALETTE,
+  rows: [
+    '...dddd...',
+    '.ddggggdd.',
+    '.dgpwpggd.',
+    'dgpwywpgd.',
+    'dggpwpgg..',
+    'dgggggg...',
+    'dggggggg..',
+    'dgggggggd.',
+    '.dgggggdd.',
+    '..dddddd..',
+  ],
+};
+export const FROG = {
+  palette: { K: '#141414', w: '#f2f2c8', G: '#5ea33e', g: '#3d7629', y: '#c9d97a' },
+  rows: [
+    '.K...K.',
+    'KwKGKwK',
+    '.GGGGG.',
+    'GgGyGgG',
+    '.GGyGG.',
+    'G.GGG.G',
+    'G.....G',
+  ],
+};
+const DRAGONFLY_PALETTE = { w: 'rgba(210, 236, 255, 0.75)', b: '#2f86d6', B: '#123f6e' };
+export const DRAGONFLY_SPREAD = {
+  palette: DRAGONFLY_PALETTE,
+  rows: [
+    '.ww..ww..',
+    '..ww.ww..',
+    'bbbbbbbBB',
+    '..ww.ww..',
+    '.ww..ww..',
+  ],
+};
+export const DRAGONFLY_BLUR = {
+  palette: DRAGONFLY_PALETTE,
+  rows: [
+    '.........',
+    '..ww.ww..',
+    'bbbbbbbBB',
+    '..ww.ww..',
+    '.........',
+  ],
+};
+
 // Reed tiles for the maze walls, seen from above. Unlike the loon these are
 // generated rather than hand-drawn. Each tile is built from:
 // - a variant (which fixed seed lays out its clumps and cattails),
@@ -225,10 +294,12 @@ function waterTileRows(rng, size) {
 }
 
 // Makes the 'water' texture: one tile, repeated across the lake by a TileSprite.
-export function makeWaterTexture(scene, tileSize, pixelSize) {
+// A different `palette` (same b/d/l/w letters) makes a recolored copy under
+// another `key`, with the same ripples.
+export function makeWaterTexture(scene, tileSize, pixelSize, { key = 'water', palette = WATER_PALETTE } = {}) {
   const rng = new Phaser.Math.RandomDataGenerator(['water']);
   const size = (tileSize * 2) / pixelSize; // Two maze tiles wide, so it repeats less often.
-  makePixelTexture(scene, 'water', { palette: WATER_PALETTE, rows: waterTileRows(rng, size) }, pixelSize);
+  makePixelTexture(scene, key, { palette, rows: waterTileRows(rng, size) }, pixelSize);
 }
 
 // Draws the art into a texture. Nearest-neighbor filtering keeps the pixels

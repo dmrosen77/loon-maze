@@ -7,6 +7,9 @@ All notable changes to Loon Maze. The format is based on
 ## [Unreleased]
 
 ### Added
+- **Time of day.** Levels cycle through dawn, day, sunset and night, shown under the level banner. Sunset turns the water dusky purple with pink and gold highlights; at night the lake goes deep blue, with moonlight glinting on the water and fireflies over the reeds.
+- **Lake life.** Lily pads (some with water lilies) float in the open water off the main path, frogs sit on some of them and hop off with a ribbit when you swim close, and dragonflies dart around.
+- **Juicier effects.** Ripples spread when you bump the reeds, dive or surface; a red flash marks each hit; and hearts burst from the chick when you reach it.
 - **Diving.** From level 6 on, hold Space (or the DIVE button on touch screens) to dive and swim under the reeds, shown as a dark shadow trailing bubbles. Each level allows a few dives: one at first, then an extra one at levels 11, 16 and 21, shown as pips beside a blue AIR bar under HP. Each dive is a one-second breath, enough for one short-cut under a wall. Let go to come back up once you're clear of the reeds. If you run out of air under the reeds, the loon pops back up where it dove, gasping, and loses 3 HP.
 - **Dive lesson.** After level 5, a short lesson level walls off the chick so you have to dive to reach it. Dives are unlimited there, running out is free, and it doesn't score.
 

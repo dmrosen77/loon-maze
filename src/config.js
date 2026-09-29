@@ -109,6 +109,32 @@ export const SPRITE_PIXEL_SIZE = 2;
 export const REED_SWAY_SPEED = 1.8;
 export const REED_GUST_SPACING = 360;
 
+// Time of day: levels cycle through these in order (level 1 is the first).
+// `tint` colors the whole lake (multiplied over it, so white changes nothing,
+// and it can only darken); `glow` then adds light of that color on top.
+// Multiplying can't turn blue water warm, so `water` can recolor it instead:
+// base, ripple troughs, crests and glints (see WATER_PALETTE in pixelArt.js).
+// `night` adds moonlight glints on the water and fireflies over the reeds.
+export const TIME_OF_DAY = [
+  { name: 'DAWN', tint: 0xf2e2f2, glow: 0x2a1426 },
+  { name: 'DAY', tint: 0xffffff },
+  {
+    name: 'SUNSET',
+    tint: 0xffcfa8,
+    water: { b: '#51497a', d: '#433d6a', l: '#a7677a', w: '#ffc27a' },
+  },
+  { name: 'NIGHT', tint: 0x6c82bc, night: true },
+];
+
+// Lake life in the maze's open water (src/game/Decor.js). Off the main path
+// to the chick, LILY_PAD_CHANCE of the open tiles get a lily pad, and
+// FROG_CHANCE of those a frog, which hops off into the water when the loon
+// comes within FROG_SCARE_DISTANCE pixels. DRAGONFLIES dart around the view.
+export const LILY_PAD_CHANCE = 0.14;
+export const FROG_CHANCE = 0.35;
+export const FROG_SCARE_DISTANCE = 70;
+export const DRAGONFLIES = 3;
+
 // How fast the water texture drifts, in pixels per second.
 export const WATER_DRIFT = { x: 6, y: 2 };
 
