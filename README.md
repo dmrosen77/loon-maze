@@ -2,8 +2,6 @@
 
 Guide a loon through a maze of reeds to reunite with its chick, before the bald eagle gets it. A pixel-art browser game for desktop and phones.
 
-**[▶ Play it now](https://dmrosen77.github.io/loon-maze/)**
-
 ![Loon Maze title screen: a loon with its chick riding on its back swims across a moonlit lake between lily pads and reeds](docs/screenshots/title.jpg)
 
 <p>
@@ -26,10 +24,6 @@ Guide a loon through a maze of reeds to reunite with its chick, before the bald 
 | Start / continue | Enter | Tap |
 | Mute | M | "SOUND" button |
 
-## Play on your phone
-
-Open the [game](https://dmrosen77.github.io/loon-maze/) and hold your phone sideways. For full screen with no browser bars, add it to your home screen: in Safari, tap **Share**, then **Add to Home Screen**; in Chrome, tap **⋮**, then **Add to Home screen**.
-
 ## Run it locally
 
 You'll need [Node.js](https://nodejs.org/) 20.19 or later.
@@ -39,9 +33,9 @@ npm install
 npm run dev
 ```
 
-Then open http://localhost:5173. To try it on a phone on the same Wi-Fi, run `npm run dev:phone` and open the "Network" address it prints.
+Then open http://localhost:5173. To try it on a phone on the same Wi-Fi, run `npm run dev:phone` and open the "Network" address it prints. Hold the phone sideways. For full screen with no browser bars, add it to your home screen: in Safari, tap **Share**, then **Add to Home Screen**; in Chrome, tap **⋮**, then **Add to Home screen**.
 
-`npm run build` makes a production build in `dist/`. Every push to `main` is published to GitHub Pages automatically.
+`npm run build` makes a production build in `dist/` that you can host on any web server. It uses relative paths, so it works from a subfolder too.
 
 ## How it's made
 

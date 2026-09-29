@@ -7,7 +7,6 @@ All notable changes to Loon Maze. The format is based on
 ## [Unreleased]
 
 ### Added
-- Play online at https://dmrosen77.github.io/loon-maze/. The site updates automatically with every push to `main`.
 - README with screenshots, controls, and how to play and run the game.
 - **Corner assist.** When you swim toward an opening you're slightly off-center from, the loon is steered into it instead of catching on the corner.
 

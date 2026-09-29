@@ -67,5 +67,6 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Mos
 
 - The repo is public at https://github.com/dmrosen77/loon-maze under the MIT license, and `main` is pushed to `origin`.
 - This repo's git email is the GitHub noreply address (`git config --local user.email`), so commits don't expose a personal email. Keep it that way.
-- Every push to `main` deploys to GitHub Pages at https://dmrosen77.github.io/loon-maze/ via `.github/workflows/deploy.yml`. The site lives in a subfolder, so the build uses relative paths (`base: './'` in `vite.config.js`, and relative links in `index.html`). Don't add root-absolute `/…` URLs.
+- The game is not published on GitHub Pages (that was removed on purpose). Don't add a Pages workflow, a homepage link, or links to hosted copies of the game in the README or elsewhere unless asked.
+- The build uses relative paths (`base: './'` in `vite.config.js`, and relative links in `index.html`), so it works from any folder on any web server. Don't add root-absolute `/…` URLs.
 - Releases: move the changelog's "Unreleased" entries under the new version, run `npm version X.Y.Z --no-git-tag-version`, commit, tag `vX.Y.Z` (annotated), push the tag, and `gh release create` with notes from the changelog.
