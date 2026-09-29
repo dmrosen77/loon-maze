@@ -397,11 +397,11 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Corner assist. When swimming straight up, down, left or right, find the
-  // lane the loon should be in (the tile row or column it's mostly in, or the
-  // neighboring one if that's where the opening ahead is) and slide it
-  // sideways toward that lane's center, so it enters openings cleanly instead
-  // of catching on corners. Deliberately diagonal input is left alone.
+  // Corner assist. When swimming straight up, down, left or right toward an
+  // opening the loon is too far off-center to fit through (its body would
+  // clip the corner), ease it sideways just enough to fit. It only nudges
+  // when needed and blends into the loon's momentum rather than replacing
+  // it, so swimming stays smooth. Deliberately diagonal input is left alone.
   assistCorners(input, delta) {
     if (CORNER_ASSIST_RANGE <= 0) return;
     const horizontal = Math.abs(input.x) > 0.8 && Math.abs(input.y) < 0.45;
@@ -421,8 +421,8 @@ export default class GameScene extends Phaser.Scene {
       return this.maze[ahead.y]?.[ahead.x] !== undefined && this.maze[ahead.y][ahead.x] !== '#';
     };
 
-    // Prefer the lane the loon is in; otherwise the neighboring lane on the
-    // side it's leaning toward, if that one is open ahead and close enough.
+    // The lane to enter: the loon's own if it's open ahead, otherwise the
+    // neighboring one on the side it's leaning toward, if close enough.
     const offset = position[across] - centerOf(tile[across]);
     let lane = null;
     if (openAhead(tile[across])) {
@@ -435,11 +435,17 @@ export default class GameScene extends Phaser.Scene {
     }
     if (lane === null) return;
 
+    // How far outside the room it has to fit. Inside it, no nudge at all.
+    const room = (TILE_SIZE - LOON_BODY_SIZE) / 2 - 1;
     const gap = centerOf(lane) - position[across];
-    if (Math.abs(gap) < 0.5) return;
-    // Slide toward the lane's center, never past it.
-    const speed = Math.min(CORNER_ASSIST_SPEED, (Math.abs(gap) * 1000) / delta);
-    this.loon.body.velocity[across] = Math.sign(gap) * speed;
+    const excess = Math.abs(gap) - room;
+    if (excess <= 0) return;
+
+    // Ease the sideways speed toward a gentle slide that slows as it arrives.
+    const velocity = this.loon.body.velocity;
+    const desired = Math.sign(gap) * Math.min(CORNER_ASSIST_SPEED, excess * 8);
+    const maxChange = (LOON_ACCELERATION * delta) / 1000;
+    velocity[across] += Phaser.Math.Clamp(desired - velocity[across], -maxChange, maxChange);
   }
 
   // Swimming physics. The velocity eases toward a target instead of jumping to

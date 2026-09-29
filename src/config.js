@@ -49,13 +49,13 @@ export const LOON_BOUNCE = 0.35;
 // Hitting the reeds slower than this (pixels per second) is a harmless nudge:
 // no HP lost and no thud. Set to 0 to make every touch count.
 export const LOON_HIT_MIN_SPEED = 90;
-// Corner assist: when swimming straight toward an opening the loon is a little
-// off-center from, steer it sideways into the opening instead of letting it
-// catch on the corner. It helps from up to CORNER_ASSIST_RANGE pixels off the
-// opening's center, sliding sideways at up to CORNER_ASSIST_SPEED. Set the
-// range to 0 to turn it off.
+// Corner assist: when swimming straight toward an opening the loon is too far
+// off-center to fit through, ease it sideways just enough to fit instead of
+// letting it catch on the corner. It helps from up to CORNER_ASSIST_RANGE
+// pixels off the opening's center, sliding sideways at up to
+// CORNER_ASSIST_SPEED. Set the range to 0 to turn it off.
 export const CORNER_ASSIST_RANGE = 26;
-export const CORNER_ASSIST_SPEED = 240;
+export const CORNER_ASSIST_SPEED = 110;
 // Time between paddling sounds while swimming.
 export const LOON_STROKE_MS = 380;
 // How fast the loon turns to face its swimming direction, in radians per second.

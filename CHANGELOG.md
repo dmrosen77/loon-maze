@@ -10,7 +10,7 @@ All notable changes to Loon Maze. The format is based on
 - **World high scores.** When the game is served with its score server (`server/`), the high score table is shared by everyone who plays there, labeled WORLD. Scores are checked on the server. Without the server the game uses this device's table, as before.
 - `npm run deploy` script for a self-hosted copy.
 - README with screenshots, controls, and how to play and run the game.
-- **Corner assist.** When you swim toward an opening you're slightly off-center from, the loon is steered into it instead of catching on the corner.
+- **Corner assist.** When you swim toward an opening you're slightly off-center from, the loon is steered into it instead of catching on the corner. It only nudges when the loon wouldn't fit, and blends into its momentum, so swimming stays smooth.
 
 ### Changed
 - **More forgiving controls.** The loon's collision box is smaller, so tight corners are easier.
