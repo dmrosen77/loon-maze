@@ -16,6 +16,8 @@ import {
   LOON_FLOAT_DRIFT,
   LOON_BOUNCE,
   LOON_HIT_MIN_SPEED,
+  CORNER_ASSIST_RANGE,
+  CORNER_ASSIST_SPEED,
   LOON_STROKE_MS,
   LOON_TURN_SPEED,
   LOON_BODY_SIZE,
@@ -92,6 +94,7 @@ export default class GameScene extends Phaser.Scene {
     this.levelStartTime = null;
 
     const maze = mazeForLevel(this.level);
+    this.maze = maze; // Kept for corner assist, which needs to know where the walls are.
     const mazeWidth = maze[0].length * TILE_SIZE;
     const mazeHeight = maze.length * TILE_SIZE;
 
@@ -375,6 +378,7 @@ export default class GameScene extends Phaser.Scene {
     const paddling = input.lengthSq() > 0;
 
     this.swim(input, paddling, delta);
+    if (paddling) this.assistCorners(input, delta);
     this.animateLoon(paddling, time, delta);
 
     // Actual speed, from how far the loon really moved since last frame (after
@@ -391,6 +395,51 @@ export default class GameScene extends Phaser.Scene {
       this.wake.emitParticleAt(tail.x, tail.y, 2);
       this.nextWakeTime = time + WAKE_INTERVAL_MS;
     }
+  }
+
+  // Corner assist. When swimming straight up, down, left or right, find the
+  // lane the loon should be in (the tile row or column it's mostly in, or the
+  // neighboring one if that's where the opening ahead is) and slide it
+  // sideways toward that lane's center, so it enters openings cleanly instead
+  // of catching on corners. Deliberately diagonal input is left alone.
+  assistCorners(input, delta) {
+    if (CORNER_ASSIST_RANGE <= 0) return;
+    const horizontal = Math.abs(input.x) > 0.8 && Math.abs(input.y) < 0.45;
+    const vertical = Math.abs(input.y) > 0.8 && Math.abs(input.x) < 0.45;
+    if (!horizontal && !vertical) return;
+
+    // "Along" is the swimming direction; "across" is the sideways axis we nudge.
+    const along = horizontal ? 'x' : 'y';
+    const across = horizontal ? 'y' : 'x';
+    const step = Math.sign(input[along]);
+    const position = { x: this.loon.x, y: this.loon.y };
+    const tile = { x: Math.floor(position.x / TILE_SIZE), y: Math.floor(position.y / TILE_SIZE) };
+    const centerOf = (index) => index * TILE_SIZE + TILE_SIZE / 2;
+    const openAhead = (acrossIndex) => {
+      const ahead = { ...tile, [across]: acrossIndex };
+      ahead[along] += step;
+      return this.maze[ahead.y]?.[ahead.x] !== undefined && this.maze[ahead.y][ahead.x] !== '#';
+    };
+
+    // Prefer the lane the loon is in; otherwise the neighboring lane on the
+    // side it's leaning toward, if that one is open ahead and close enough.
+    const offset = position[across] - centerOf(tile[across]);
+    let lane = null;
+    if (openAhead(tile[across])) {
+      lane = tile[across];
+    } else if (offset !== 0) {
+      const neighbor = tile[across] + Math.sign(offset);
+      if (openAhead(neighbor) && Math.abs(position[across] - centerOf(neighbor)) <= CORNER_ASSIST_RANGE) {
+        lane = neighbor;
+      }
+    }
+    if (lane === null) return;
+
+    const gap = centerOf(lane) - position[across];
+    if (Math.abs(gap) < 0.5) return;
+    // Slide toward the lane's center, never past it.
+    const speed = Math.min(CORNER_ASSIST_SPEED, (Math.abs(gap) * 1000) / delta);
+    this.loon.body.velocity[across] = Math.sign(gap) * speed;
   }
 
   // Swimming physics. The velocity eases toward a target instead of jumping to

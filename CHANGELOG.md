@@ -9,6 +9,11 @@ All notable changes to Loon Maze. The format is based on
 ### Added
 - Play online at https://dmrosen77.github.io/loon-maze/. The site updates automatically with every push to `main`.
 - README with screenshots, controls, and how to play and run the game.
+- **Corner assist.** When you swim toward an opening you're slightly off-center from, the loon is steered into it instead of catching on the corner.
+
+### Changed
+- **More forgiving controls.** The loon's collision box is smaller, so tight corners are easier.
+- **Fewer HP hits.** Only impacts at about half speed or faster cost HP (up from about a quarter), and the blink protection after a hit lasts 1.5 seconds instead of 1.
 
 ## [1.2.0] - 2026-09-29
 

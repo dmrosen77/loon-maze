@@ -48,7 +48,14 @@ export const LOON_FLOAT_DRIFT = 1.5;
 export const LOON_BOUNCE = 0.35;
 // Hitting the reeds slower than this (pixels per second) is a harmless nudge:
 // no HP lost and no thud. Set to 0 to make every touch count.
-export const LOON_HIT_MIN_SPEED = 50;
+export const LOON_HIT_MIN_SPEED = 90;
+// Corner assist: when swimming straight toward an opening the loon is a little
+// off-center from, steer it sideways into the opening instead of letting it
+// catch on the corner. It helps from up to CORNER_ASSIST_RANGE pixels off the
+// opening's center, sliding sideways at up to CORNER_ASSIST_SPEED. Set the
+// range to 0 to turn it off.
+export const CORNER_ASSIST_RANGE = 26;
+export const CORNER_ASSIST_SPEED = 240;
 // Time between paddling sounds while swimming.
 export const LOON_STROKE_MS = 380;
 // How fast the loon turns to face its swimming direction, in radians per second.
@@ -59,10 +66,11 @@ export const LOON_TURN_SPEED = 12;
 export const LOON_MAX_HP = 50;
 export const HIT_DAMAGE = 1;
 export const REUNION_HEAL = 5;
-export const LOON_INVULNERABLE_MS = 1000;
+export const LOON_INVULNERABLE_MS = 1500;
 // Square collision box, so walls behave the same whichever way the loon faces.
 // The sprite is a bit longer than this, so its head can poke into the reeds.
-export const LOON_BODY_SIZE = 24;
+// Smaller leaves more room in the 40px corridors.
+export const LOON_BODY_SIZE = 20;
 
 // Screen pixels per art pixel for the in-game sprites (see src/art/pixelArt.js).
 export const SPRITE_PIXEL_SIZE = 2;
