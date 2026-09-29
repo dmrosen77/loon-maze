@@ -8,6 +8,7 @@ All notable changes to Loon Maze. The format is based on
 
 ### Added
 - Play online at https://dmrosen77.github.io/loon-maze/. The site updates automatically with every push to `main`.
+- README with screenshots, controls, and how to play and run the game.
 
 ## [1.2.0] - 2026-09-29
 
