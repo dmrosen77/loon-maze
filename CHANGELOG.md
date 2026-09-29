@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.2.0] - 2026-09-29
+
 ### Added
 - MIT license.
 - Home-screen app support. "Add to Home Screen" gives a Loon Maze icon that opens full screen, with no browser bars. On Android, the first tap on the title also goes full screen and holds the screen sideways.
@@ -49,5 +51,7 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.2.0...HEAD
+[1.2.0]: https://github.com/dmrosen77/loon-maze/compare/v1.1.0...v1.2.0
 [1.1.0]: https://github.com/dmrosen77/loon-maze/compare/v1.0.0...v1.1.0
 [1.0.0]: https://github.com/dmrosen77/loon-maze/releases/tag/v1.0.0
