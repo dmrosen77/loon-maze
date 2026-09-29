@@ -6,6 +6,10 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **Diving.** From level 6 on, hold Space (or the DIVE button on touch screens) to dive and swim under the reeds, shown as a dark shadow trailing bubbles. Each level allows a few dives: one at first, then an extra one at levels 11, 16 and 21, shown as pips beside a blue AIR bar under HP. Each dive is a one-second breath, enough for one short-cut under a wall. Let go to come back up once you're clear of the reeds. If you run out of air under the reeds, the loon pops back up where it dove, gasping, and loses 3 HP.
+- **Dive lesson.** After level 5, a short lesson level walls off the chick so you have to dive to reach it. Dives are unlimited there, running out is free, and it doesn't score.
+
 ## [1.3.1] - 2026-09-29
 
 ### Changed

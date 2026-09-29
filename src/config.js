@@ -72,6 +72,35 @@ export const LOON_INVULNERABLE_MS = 1500;
 // Smaller leaves more room in the 40px corridors.
 export const LOON_BODY_SIZE = 20;
 
+// Diving. From DIVE_UNLOCK_LEVEL on, holding Space (or the DIVE button on
+// touch screens) takes the loon underwater, where it swims under the reeds at
+// DIVE_SPEED_FACTOR of its normal speed. Each level allows a few dives (see
+// DIVE_TIERS), and each dive is one breath of AIR_PER_DIVE_MS. (A dive from one
+// corridor, under a wall, into the next takes about 0.6 seconds.) Back on the
+// surface the breath refills at AIR_REFILL times the drain speed, and the next
+// dive needs a full breath. Running out under the reeds pops the loon back up
+// where it dove, costing AIR_OUT_DAMAGE HP.
+// Before the unlock level there's a short dive lesson (src/mazes/diveLesson.js)
+// with unlimited dives, where running out is free.
+export const DIVE_UNLOCK_LEVEL = 6;
+export const DIVE_SPEED_FACTOR = 0.75;
+// Dives allowed per level, growing as the loon gets further: from each
+// `level` on, `dives` per level. A level where it grows says so.
+export const DIVE_TIERS = [
+  { level: 6, dives: 1 },
+  { level: 11, dives: 2 },
+  { level: 16, dives: 3 },
+  { level: 21, dives: 4 },
+];
+export const AIR_PER_DIVE_MS = 1000;
+export const AIR_REFILL = 3;
+export const AIR_OUT_DAMAGE = 3;
+// Underwater the loon shows as a dark shadow: this tint, at this opacity.
+export const DIVE_SHADOW_TINT = 0x04101a;
+export const DIVE_SHADOW_ALPHA = 0.8;
+// A bubble rises from the diving loon every DIVE_BUBBLE_MS.
+export const DIVE_BUBBLE_MS = 140;
+
 // Screen pixels per art pixel for the in-game sprites (see src/art/pixelArt.js).
 export const SPRITE_PIXEL_SIZE = 2;
 

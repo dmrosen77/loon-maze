@@ -30,9 +30,19 @@ import {
   WATER_DRIFT,
   WAKE_INTERVAL_MS,
   WAKE_SPLASH,
+  DIVE_UNLOCK_LEVEL,
+  DIVE_SPEED_FACTOR,
+  DIVE_TIERS,
+  AIR_PER_DIVE_MS,
+  AIR_REFILL,
+  AIR_OUT_DAMAGE,
+  DIVE_SHADOW_TINT,
+  DIVE_SHADOW_ALPHA,
+  DIVE_BUBBLE_MS,
   FONT_FAMILY,
 } from '../config.js';
 import handMadeMaze from '../mazes/maze1.js';
+import diveLessonMaze from '../mazes/diveLesson.js';
 import generateMaze from '../mazes/generateMaze.js';
 import {
   LOON_TOP_FEET_OUT,
@@ -47,7 +57,8 @@ import {
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import HpBar from '../ui/HpBar.js';
-import { TouchStick, addMuteButton } from '../ui/touch.js';
+import AirBar from '../ui/AirBar.js';
+import { TouchStick, addMuteButton, addDiveButton, isTouchDevice } from '../ui/touch.js';
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -57,6 +68,12 @@ const TEXT_STYLE = {
   align: 'center',
   lineSpacing: 16,
 };
+
+// The dive tier for a level: the last one it has reached (the first one for
+// the lesson and any level before diving).
+function diveTierForLevel(level) {
+  return DIVE_TIERS.filter((tier) => tier.level <= level).at(-1) ?? DIVE_TIERS[0];
+}
 
 // Each level's maze is a little bigger than the last, up to the max size.
 function mazeForLevel(level) {
@@ -73,11 +90,21 @@ export default class GameScene extends Phaser.Scene {
     super('GameScene');
   }
 
-  // Started with { level, hp, score }. HP and score carry over from the last
-  // level (via the reunion cutscene); a new game starts at level 1 with full
-  // HP and no score.
+  // Started with { level, hp, score, lesson }. HP and score carry over from
+  // the last level (via the reunion cutscene); a new game starts at level 1
+  // with full HP and no score. `lesson` plays the dive lesson, which then
+  // starts `level` for real.
   create(data) {
     this.level = data?.level ?? 1;
+    this.lesson = Boolean(data?.lesson);
+    this.canDive = this.lesson || this.level >= DIVE_UNLOCK_LEVEL;
+    this.diveTier = diveTierForLevel(this.level);
+    this.divesLeft = this.lesson ? Infinity : this.diveTier.dives;
+    this.air = AIR_PER_DIVE_MS; // The current breath.
+    this.diving = false;
+    this.wantedDive = false; // Whether dive was held last frame, to catch new presses.
+    this.nextBubbleTime = 0;
+    this.airBar = null; // Only made on levels with diving.
     this.reunited = false;
     this.gameOver = false;
     this.hp = data?.hp ?? LOON_MAX_HP;
@@ -93,8 +120,8 @@ export default class GameScene extends Phaser.Scene {
     // from when the scene last ran until then.
     this.levelStartTime = null;
 
-    const maze = mazeForLevel(this.level);
-    this.maze = maze; // Kept for corner assist, which needs to know where the walls are.
+    const maze = this.lesson ? diveLessonMaze : mazeForLevel(this.level);
+    this.maze = maze; // Kept for corner assist and diving, which need to know where the walls are.
     const mazeWidth = maze[0].length * TILE_SIZE;
     const mazeHeight = maze.length * TILE_SIZE;
 
@@ -134,6 +161,8 @@ export default class GameScene extends Phaser.Scene {
       });
     });
 
+    this.createBubbles();
+
     // The chick faces roughly the way its parent will come from, snapped to
     // up/down/left/right since pixel art looks ragged at odd angles.
     this.baby = this.add.image(babyStart.x, babyStart.y, 'baby-loon-top');
@@ -141,7 +170,9 @@ export default class GameScene extends Phaser.Scene {
     this.baby.rotation = Phaser.Math.Snap.To(towardParent, Math.PI / 2);
     this.physics.add.existing(this.baby, true);
 
-    this.physics.world.setBounds(0, 0, mazeWidth, mazeHeight);
+    // The bounds leave out the maze's outer ring of reeds, so a diving loon
+    // can't swim under it to the edge of the lake.
+    this.physics.world.setBounds(TILE_SIZE, TILE_SIZE, mazeWidth - 2 * TILE_SIZE, mazeHeight - 2 * TILE_SIZE);
     this.loon = this.add.sprite(loonStart.x, loonStart.y, 'loon-top-feet-in');
     this.physics.add.existing(this.loon);
     this.loon.body.setSize(LOON_BODY_SIZE, LOON_BODY_SIZE);
@@ -152,8 +183,9 @@ export default class GameScene extends Phaser.Scene {
     this.heading = 0; // Direction the loon faces, before the idle rocking.
     this.impactSpeed = 0; // Speed going into the latest physics step.
 
-    this.physics.add.collider(this.loon, reeds, this.bump, null, this);
-    this.physics.add.overlap(this.loon, this.baby, this.reunite, null, this);
+    // Diving switches the reeds' collider off; the chick is only reached on the surface.
+    this.reedCollider = this.physics.add.collider(this.loon, reeds, this.bump, null, this);
+    this.physics.add.overlap(this.loon, this.baby, this.reunite, () => !this.diving, this);
 
     camera.setBounds(lake.x, lake.y, lake.width, lake.height);
     camera.startFollow(this.loon, true);
@@ -161,7 +193,9 @@ export default class GameScene extends Phaser.Scene {
 
     this.cursors = this.input.keyboard.createCursorKeys();
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+    this.diveKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.stick = new TouchStick(this);
+    this.diveButton = this.canDive ? addDiveButton(this) : { held: false };
     addMuteButton(this, this.audio, this.scale.width - 12, 34);
   }
 
@@ -171,6 +205,7 @@ export default class GameScene extends Phaser.Scene {
     makePixelTexture(this, 'loon-top-feet-in', LOON_TOP_FEET_IN, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'baby-loon-top', BABY_LOON_TOP, SPRITE_PIXEL_SIZE);
     makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
+    makePixelTexture(this, 'bubble', { palette: { w: '#d8f1ff' }, rows: ['.w.', 'w.w', '.w.'] }, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
     if (!this.anims.exists('loon-paddle')) {
       this.anims.create({
@@ -232,6 +267,18 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // Bubbles rising from the diving loon: each swells a little and pops. Made
+  // after the reeds, so they show over them while the loon is underneath.
+  createBubbles() {
+    this.bubbles = this.add.particles(0, 0, 'bubble', {
+      lifespan: { min: 400, max: 800 },
+      speed: { min: 2, max: 10 },
+      scale: { start: 0.8, end: 1.5 },
+      alpha: { start: 0.9, end: 0 },
+      emitting: false,
+    });
+  }
+
   // A point behind the loon's center (and optionally to one side), following
   // its rotation.
   pointBehindLoon(distance, sideways = 0) {
@@ -246,11 +293,21 @@ export default class GameScene extends Phaser.Scene {
 
   // A corner label, plus a big banner that fades out at the start of the level.
   showLevelText() {
+    const title = this.lesson ? 'Dive lesson' : `Level ${this.level}`;
     this.add
-      .text(12, 8, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
+      .text(12, 8, title, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setScrollFactor(0)
       .setDepth(10);
     this.hpBar = new HpBar(this, 12, 40, { width: 160, height: 12, max: LOON_MAX_HP, value: this.hp });
+    if (this.canDive) {
+      this.airBar = new AirBar(this, 12, 60, this.hpBar.right - 160, {
+        width: 80,
+        height: 12,
+        max: AIR_PER_DIVE_MS,
+        dives: this.lesson ? null : this.diveTier.dives,
+      });
+    }
+    if (this.lesson) this.showLessonHints();
     this.add
       .text(this.scale.width - 12, 8, `SCORE ${this.score}`, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setOrigin(1, 0)
@@ -259,7 +316,7 @@ export default class GameScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
     const banner = this.add
-      .text(width / 2, height / 2, `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '48px' })
+      .text(width / 2, height / 2, this.lesson ? 'DIVE LESSON' : `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '48px' })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(10);
@@ -270,6 +327,38 @@ export default class GameScene extends Phaser.Scene {
       duration: 700,
       onComplete: () => banner.destroy(),
     });
+
+    // An extra dive per level starts on this level (after the first tier).
+    if (!this.lesson && this.diveTier !== DIVE_TIERS[0] && this.diveTier.level === this.level) {
+      const moreAir = this.add
+        .text(width / 2, height / 2 + 52, 'EXTRA DIVE!', { ...TEXT_STYLE, fontSize: '20px', color: '#4fb3ff' })
+        .setOrigin(0.5)
+        .setScrollFactor(0)
+        .setDepth(10);
+      this.audio?.heal();
+      this.tweens.add({
+        targets: moreAir,
+        alpha: 0,
+        delay: 1600,
+        duration: 700,
+        onComplete: () => moreAir.destroy(),
+      });
+    }
+  }
+
+  // How to dive, along the bottom of the screen for the whole lesson.
+  showLessonHints() {
+    const { width, height } = this.scale;
+    const how = isTouchDevice() ? 'HOLD DIVE' : 'HOLD SPACE';
+    this.add
+      .text(width / 2, height - 76, `SWIM UP TO THE REEDS, ${how}\nAND SWIM UNDER THEM TO YOUR CHICK`, {
+        ...TEXT_STYLE,
+        fontSize: '14px',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(10);
   }
 
   // The collider fires every frame while pushing into reeds, so only count a
@@ -285,9 +374,11 @@ export default class GameScene extends Phaser.Scene {
     this.lastBumpTime = now;
   }
 
-  takeDamage(now) {
-    if (this.reunited || this.gameOver || now < this.invulnerableUntil) return;
-    this.hp = Math.max(0, this.hp - HIT_DAMAGE);
+  // `force` hurts even while the loon is still blinking from the last hit.
+  takeDamage(now, amount = HIT_DAMAGE, force = false) {
+    if (this.reunited || this.gameOver || (now < this.invulnerableUntil && !force)) return;
+    this.tweens.killTweensOf(this.loon);
+    this.hp = Math.max(0, this.hp - amount);
     this.invulnerableUntil = now + LOON_INVULNERABLE_MS;
     this.hpBar.setValue(this.hp);
     this.cameras.main.shake(120, 0.006);
@@ -300,7 +391,9 @@ export default class GameScene extends Phaser.Scene {
     this.audio?.hurt();
     // Flash red, then blink until the loon can be hurt again.
     this.loon.setTint(0xff6060);
-    this.time.delayedCall(150, () => this.loon.clearTint());
+    this.time.delayedCall(150, () => {
+      if (!this.diving) this.loon.clearTint();
+    });
     this.tweens.add({
       targets: this.loon,
       alpha: 0.3,
@@ -331,6 +424,10 @@ export default class GameScene extends Phaser.Scene {
   reunite() {
     if (this.reunited || this.gameOver) return;
     this.reunited = true;
+    if (this.lesson) {
+      this.finishLesson();
+      return;
+    }
 
     // Level points, plus a bonus for finishing quickly.
     const seconds = (this.time.now - this.levelStartTime) / 1000;
@@ -355,6 +452,97 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
+  // The lesson has no points or cutscene: a cheer, then the real level.
+  finishLesson() {
+    this.loon.body.setVelocity(0, 0);
+    this.loon.stop();
+    this.audio?.heal();
+    const { width, height } = this.scale;
+    this.add
+      .text(width / 2, height / 2, 'YOU CAN DIVE!', { ...TEXT_STYLE, fontSize: '36px', color: '#4fb3ff' })
+      .setOrigin(0.5)
+      .setScrollFactor(0)
+      .setDepth(10);
+    this.time.delayedCall(1600, () => {
+      this.cameras.main.fadeOut(500, 0, 0, 0);
+      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+        this.scene.start('GameScene', { level: this.level, hp: this.hp, score: this.score });
+      });
+    });
+  }
+
+  // Diving. A new press of Space (or DIVE), with a dive left this level and a
+  // full breath, takes the loon under; letting go brings it back up, but only
+  // once it's clear of the reeds. Out of air in open water, it just surfaces;
+  // out of air under the reeds, it pops back up where it dove, gasping (and
+  // losing HP, except in the lesson). On the surface the breath refills while
+  // there are dives left.
+  updateDive(time, delta) {
+    if (!this.canDive) return;
+    const wantsDive = this.diveKey.isDown || this.diveButton.held;
+    const pressed = wantsDive && !this.wantedDive;
+    this.wantedDive = wantsDive;
+
+    if (!this.diving) {
+      if (this.divesLeft > 0) this.air = Math.min(AIR_PER_DIVE_MS, this.air + delta * AIR_REFILL);
+      if (pressed && this.divesLeft > 0 && this.air >= AIR_PER_DIVE_MS) this.startDive();
+    } else {
+      this.air = Math.max(0, this.air - delta);
+      const underReeds = this.isUnderReeds();
+      if (this.air <= 0) {
+        if (underReeds) this.popBack(time);
+        else this.surface();
+      } else if (!wantsDive && !underReeds) {
+        this.surface();
+      } else if (time >= this.nextBubbleTime) {
+        this.bubbles.emitParticleAt(this.loon.x + Phaser.Math.Between(-6, 6), this.loon.y + Phaser.Math.Between(-6, 6), 1);
+        this.nextBubbleTime = time + DIVE_BUBBLE_MS;
+      }
+    }
+    this.airBar.setValue(this.air);
+  }
+
+  // Whether any part of the loon's collision box is over a reed tile.
+  isUnderReeds() {
+    const { x, y, width, height } = this.loon.body;
+    for (let row = Math.floor(y / TILE_SIZE); row <= Math.floor((y + height - 1) / TILE_SIZE); row++) {
+      for (let col = Math.floor(x / TILE_SIZE); col <= Math.floor((x + width - 1) / TILE_SIZE); col++) {
+        if (this.maze[row]?.[col] === '#') return true;
+      }
+    }
+    return false;
+  }
+
+  startDive() {
+    this.diving = true;
+    this.divesLeft -= 1;
+    this.airBar.setDivesLeft(this.divesLeft);
+    this.diveStart = { x: this.loon.x, y: this.loon.y };
+    this.reedCollider.active = false;
+    this.tweens.killTweensOf(this.loon); // Any blinking from a hit.
+    this.loon.setTint(DIVE_SHADOW_TINT).setAlpha(DIVE_SHADOW_ALPHA).setScale(0.9);
+    this.wake.emitParticleAt(this.loon.x, this.loon.y, 8);
+    this.audio?.dive();
+  }
+
+  surface() {
+    this.diving = false;
+    if (this.divesLeft === 0) this.air = 0; // No more dives this level.
+    this.reedCollider.active = true;
+    this.loon.clearTint().setAlpha(1).setScale(1);
+    this.wake.emitParticleAt(this.loon.x, this.loon.y, 8);
+    this.audio?.surface();
+  }
+
+  popBack(time) {
+    this.loon.body.reset(this.diveStart.x, this.diveStart.y);
+    this.lastLoonX = this.diveStart.x;
+    this.lastLoonY = this.diveStart.y;
+    this.surface();
+    this.audio?.gasp();
+    if (!this.lesson) this.takeDamage(time, AIR_OUT_DAMAGE, true);
+  }
+
   update(time, delta) {
     this.levelStartTime ??= time;
     if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
@@ -377,8 +565,10 @@ export default class GameScene extends Phaser.Scene {
     if (input.lengthSq() === 0) input = this.stick.vector.clone();
     const paddling = input.lengthSq() > 0;
 
+    this.updateDive(time, delta);
+    if (this.gameOver) return;
     this.swim(input, paddling, delta);
-    if (paddling) this.assistCorners(input, delta);
+    if (paddling && !this.diving) this.assistCorners(input, delta);
     this.animateLoon(paddling, time, delta);
 
     // Actual speed, from how far the loon really moved since last frame (after
@@ -387,7 +577,7 @@ export default class GameScene extends Phaser.Scene {
     const speed = (Math.hypot(x - this.lastLoonX, y - this.lastLoonY) * 1000) / delta;
     this.lastLoonX = x;
     this.lastLoonY = y;
-    if (speed < 30) return; // Floating along with the current: no wake.
+    if (speed < 30 || this.diving) return; // Floating along with the current, or underwater: no wake.
 
     if (paddling) this.paddle(time);
     if (time >= this.nextWakeTime) {
@@ -456,7 +646,7 @@ export default class GameScene extends Phaser.Scene {
   swim(input, paddling, delta) {
     const velocity = this.loon.body.velocity;
     const target = paddling
-      ? input.clone().scale(LOON_SPEED)
+      ? input.clone().scale(LOON_SPEED * (this.diving ? DIVE_SPEED_FACTOR : 1))
       : new Phaser.Math.Vector2(WATER_DRIFT.x, WATER_DRIFT.y).scale(LOON_FLOAT_DRIFT);
     const maxChange = ((paddling ? LOON_ACCELERATION : LOON_GLIDE_DRAG) * delta) / 1000;
     const change = target.subtract(velocity);

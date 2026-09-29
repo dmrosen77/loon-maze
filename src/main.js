@@ -33,6 +33,8 @@ const config = {
     autoCenter: Phaser.Scale.CENTER_BOTH,
   },
   backgroundColor: COLORS.water,
+  // Two fingers at once: one on the joystick, one holding DIVE.
+  input: { activePointers: 2 },
   physics: {
     default: 'arcade',
     arcade: { debug: false },

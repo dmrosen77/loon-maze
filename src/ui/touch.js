@@ -137,3 +137,55 @@ export function addMuteButton(scene, audio, x, y, { depth = 10 } = {}) {
   });
   return button;
 }
+
+// A round "DIVE" button in the bottom-right corner for touch screens, held
+// down to stay underwater (the joystick steers with the other thumb).
+// Returns { held } (always false on non-touch devices, where it isn't shown).
+export function addDiveButton(scene) {
+  const state = { held: false };
+  if (!isTouchDevice()) return state;
+  const radius = 46;
+  const x = scene.scale.width - REST_MARGIN - radius;
+  const y = scene.scale.height - REST_MARGIN - radius;
+  const button = scene.add
+    .circle(x, y, radius, 0x4fb3ff, 0.25)
+    .setStrokeStyle(3, 0xffffff, 0.6)
+    .setScrollFactor(0)
+    .setDepth(20)
+    .setInteractive();
+  const label = scene.add
+    .text(x, y, 'DIVE', {
+      fontFamily: `"${FONT_FAMILY}"`,
+      fontSize: '14px',
+      color: '#ffffff',
+      stroke: '#000000',
+      strokeThickness: 4,
+    })
+    .setOrigin(0.5)
+    .setScrollFactor(0)
+    .setDepth(21);
+
+  let pointerId = null;
+  const show = () => {
+    button.setFillStyle(0x4fb3ff, state.held ? 0.6 : 0.25);
+    label.setScale(state.held ? 0.9 : 1);
+  };
+  button.on('pointerdown', (pointer) => {
+    pointerId = pointer.id;
+    state.held = true;
+    show();
+  });
+  const release = (pointer) => {
+    if (pointer.id !== pointerId) return;
+    pointerId = null;
+    state.held = false;
+    show();
+  };
+  scene.input.on('pointerup', release);
+  scene.input.on('pointerupoutside', release);
+  scene.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+    scene.input.off('pointerup', release);
+    scene.input.off('pointerupoutside', release);
+  });
+  return state;
+}

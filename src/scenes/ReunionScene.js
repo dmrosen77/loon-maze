@@ -8,6 +8,7 @@ import {
   REUNION_HEAL,
   FONT_FAMILY,
   TITLE_COLORS,
+  DIVE_UNLOCK_LEVEL,
 } from '../config.js';
 import { HEART, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
@@ -273,7 +274,9 @@ export default class ReunionScene extends Phaser.Scene {
     this.leaving = true;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-      this.scene.start('GameScene', { level: this.level + 1, hp: this.healedHp, score: this.score });
+      // Just before diving unlocks, the next level starts with the dive lesson.
+      const level = this.level + 1;
+      this.scene.start('GameScene', { level, hp: this.healedHp, score: this.score, lesson: level === DIVE_UNLOCK_LEVEL });
     });
   }
 

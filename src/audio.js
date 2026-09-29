@@ -399,6 +399,55 @@ class LakeAudio {
     osc.stop(t + 0.2);
   }
 
+  // A splash of noise swept between two filter frequencies, for diving and surfacing.
+  splash(fromFreq, toFreq, length, volume) {
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const noise = ctx.createBufferSource();
+    noise.buffer = this.noiseBuffer;
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'bandpass';
+    filter.Q.value = 1.2;
+    filter.frequency.setValueAtTime(fromFreq, t);
+    filter.frequency.exponentialRampToValueAtTime(toFreq, t + length);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(volume, t + 0.03);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + length);
+    noise.connect(filter).connect(gain).connect(this.sfxBus);
+    noise.start(t, Math.random() * 1.5, length);
+  }
+
+  // A low "bloop" under a splash that sinks in pitch as the loon goes under.
+  dive() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    this.splash(1800, 300, 0.35, 0.35);
+    const osc = ctx.createOscillator();
+    osc.frequency.setValueAtTime(420, t);
+    osc.frequency.exponentialRampToValueAtTime(110, t + 0.25);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.25, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.3);
+    osc.connect(gain).connect(this.sfxBus);
+    osc.start(t);
+    osc.stop(t + 0.32);
+  }
+
+  // A rising splash as the loon pops back up.
+  surface() {
+    if (!this.started) return;
+    this.splash(400, 2000, 0.3, 0.3);
+  }
+
+  // Out of air: a breathless gasp (a quick rising hiss) with a falling blip.
+  gasp() {
+    if (!this.started) return;
+    this.splash(900, 3000, 0.4, 0.25);
+    this.hurt();
+  }
+
   // The parent's wail, then the baby's higher, shorter reply.
   reunite() {
     if (!this.started) return;
