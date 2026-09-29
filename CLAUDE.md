@@ -61,6 +61,9 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Mos
 - The zoom screenshot action doesn't work in the pane. To inspect sprites up close, zoom the game camera instead: `camera.stopFollow()`, `camera.useBounds = false`, `camera.setZoom(5)`, then `camera.setScroll(...)`.
 - Starting a scene from a script doesn't run `create()` right away, and it takes longer while the pane is hidden, so wait before touching the new scene's objects.
 
-## Git
+## Git and deployment
 
-The repo is private at https://github.com/dmrosen77/loon-maze, and `main` is pushed to `origin`.
+- The repo is public at https://github.com/dmrosen77/loon-maze under the MIT license, and `main` is pushed to `origin`.
+- This repo's git email is the GitHub noreply address (`git config --local user.email`), so commits don't expose a personal email. Keep it that way.
+- Every push to `main` deploys to GitHub Pages at https://dmrosen77.github.io/loon-maze/ via `.github/workflows/deploy.yml`. The site lives in a subfolder, so the build uses relative paths (`base: './'` in `vite.config.js`, and relative links in `index.html`). Don't add root-absolute `/…` URLs.
+- Releases: move the changelog's "Unreleased" entries under the new version, run `npm version X.Y.Z --no-git-tag-version`, commit, tag `vX.Y.Z` (annotated), push the tag, and `gh release create` with notes from the changelog.
