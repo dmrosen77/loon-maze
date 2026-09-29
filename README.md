@@ -39,6 +39,8 @@ Then open http://localhost:5173. To try it on a phone on the same Wi-Fi, run `np
 
 ## World high scores (optional)
 
+<img src="docs/screenshots/high-scores.jpg" alt="The world high score table: ten entries with rank, three-letter initials, score and level reached, labeled WORLD" width="60%" />
+
 Out of the box, high scores are saved in the browser, so each device has its own table. To share one table among everyone who plays your copy, run the included score server next to the game:
 
 ```bash
