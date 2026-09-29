@@ -8,10 +8,15 @@ import eagleBackUrl from '../assets/eagle-wings-back.png';
 
 // Screen pixels per art pixel. The eagle and loon images come from
 // art-source/ via tools/pixelize.py.
-const LOON_SCALE = 3;
-const EAGLE_SCALE = 4;
+// A bald eagle's body is a bit longer than a loon's, and its wings span
+// about two and a half times that, so the eagle is drawn much bigger.
+const LOON_SCALE = 2;
+const EAGLE_SCALE = 5;
 
 const LOON_SPOT = { x: 440, y: 350 };
+// How far behind the eagle's center it holds the loon. Prey carried in the
+// talons trails back under the tail, so from above most of the loon shows.
+const TALONS_BEHIND = 150;
 // Light comes from the upper left, so shadows fall down and to the right,
 // further the higher the eagle is.
 const SHADOW_OFFSET = { x: 70, y: 90 };
@@ -63,7 +68,7 @@ export default class GameOverScene extends Phaser.Scene {
     this.createEagleArt();
     makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE);
     makePixelTexture(this, 'wake-droplet', { palette: { w: '#f2fafe' }, rows: ['ww', 'ww'] }, SPRITE_PIXEL_SIZE);
-    makePixelTexture(this, 'feather', { palette: { B: '#4a3322', b: '#6b4b32' }, rows: ['BBb'] }, EAGLE_SCALE);
+    makePixelTexture(this, 'feather', { palette: { B: '#4a3322', b: '#6b4b32' }, rows: ['BBb'] }, 4);
 
     const { width, height } = this.scale;
     // The same lake as the reunion cutscene, but darker and colder.
@@ -119,7 +124,7 @@ export default class GameOverScene extends Phaser.Scene {
   // A red "!" pops up over the loon.
   alert() {
     const mark = this.add
-      .text(LOON_SPOT.x + 120, LOON_SPOT.y - 110, '!', { ...TEXT_STYLE, fontSize: '48px', color: '#e8475f' })
+      .text(LOON_SPOT.x + 85, LOON_SPOT.y - 75, '!', { ...TEXT_STYLE, fontSize: '48px', color: '#e8475f' })
       .setOrigin(0.5)
       .setScale(0);
     this.tweens.add({ targets: mark, scale: 1, duration: 250, ease: 'Back.easeOut' });
@@ -127,15 +132,21 @@ export default class GameOverScene extends Phaser.Scene {
   }
 
   // The eagle dives in from the upper right with its wings swept back,
-  // growing as it drops toward the camera, and pulls up right over the loon.
+  // growing as it drops toward the camera, and pulls up with its talons over
+  // the loon. Its body ends up just past the loon, so from above the loon's
+  // head and back still show behind the eagle's tail.
   swoopIn() {
     this.audio?.screech();
     const start = { x: this.scale.width + 250, y: 60 };
-    const hover = { x: LOON_SPOT.x - 20, y: LOON_SPOT.y - 10 };
+    const heading = Phaser.Math.Angle.BetweenPoints(start, LOON_SPOT);
+    const hover = {
+      x: LOON_SPOT.x + Math.cos(heading) * TALONS_BEHIND,
+      y: LOON_SPOT.y + Math.sin(heading) * TALONS_BEHIND,
+    };
     this.eagle
       .setPosition(start.x, start.y)
       .setScale(EAGLE_SCALE * 0.7)
-      .setRotation(Phaser.Math.Angle.BetweenPoints(start, hover))
+      .setRotation(heading)
       .setVisible(true);
     this.eagleShadow.setVisible(true);
 
@@ -160,26 +171,40 @@ export default class GameOverScene extends Phaser.Scene {
     this.eagle.play('eagle-flap');
     this.tweens.killTweensOf(this.loon);
 
-    // From here the eagle and loon move as one, the loon held just below.
-    this.carrier = this.add.container(this.eagle.x, this.eagle.y);
-    this.loon.setPosition(this.loon.x - this.eagle.x, this.loon.y - this.eagle.y);
-    this.eagle.setPosition(0, 0);
+    // From here the eagle and loon move and turn as one, the loon held in
+    // the talons. The container takes the eagle's heading, so the loon's
+    // offset and angle are converted into the eagle's frame.
+    const heading = this.eagle.rotation;
+    const offset = new Phaser.Math.Vector2(this.loon.x - this.eagle.x, this.loon.y - this.eagle.y).rotate(-heading);
+    this.carrier = this.add.container(this.eagle.x, this.eagle.y).setRotation(heading);
+    this.loon.setPosition(offset.x, offset.y).setRotation(this.loon.rotation - heading);
+    this.eagle.setPosition(0, 0).setRotation(0);
     this.carrier.add([this.loon, this.eagle]);
+
+    // The loon struggles in the talons.
+    this.tweens.add({
+      targets: this.loon,
+      angle: this.loon.angle + 7,
+      duration: 110,
+      yoyo: true,
+      repeat: -1,
+    });
 
     // Climb away to the upper left, growing as they rise toward the camera.
     const exit = { x: -450, y: -80 };
     this.time.delayedCall(450, () => {
       this.audio?.screech();
+      const exitHeading = Phaser.Math.Angle.BetweenPoints(this.carrier, exit);
       this.tweens.add({
-        targets: this.eagle,
-        rotation: Phaser.Math.Angle.BetweenPoints(this.carrier, exit),
+        targets: this.carrier,
+        rotation: heading + Phaser.Math.Angle.Wrap(exitHeading - heading),
         duration: 500,
       });
       this.tweens.add({
         targets: this.carrier,
         x: exit.x,
         y: exit.y,
-        scale: 1.4,
+        scale: 1.25,
         duration: 2000,
         ease: 'Cubic.easeIn',
         onComplete: () => this.showGameOver(),
@@ -231,7 +256,7 @@ export default class GameOverScene extends Phaser.Scene {
         .setTexture(this.eagle.texture.key)
         .setPosition(x + SHADOW_OFFSET.x * height, y + SHADOW_OFFSET.y * height)
         .setScale(EAGLE_SCALE * height * 0.9)
-        .setRotation(this.eagle.rotation);
+        .setRotation(this.carrier ? this.carrier.rotation : this.eagle.rotation);
     }
 
     if (this.canLeave && !this.leaving && Phaser.Input.Keyboard.JustDown(this.enterKey)) {
