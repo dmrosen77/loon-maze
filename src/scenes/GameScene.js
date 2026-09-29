@@ -8,6 +8,11 @@ import {
   MAX_COLS,
   MAX_ROWS,
   LOON_SPEED,
+  LOON_ACCELERATION,
+  LOON_GLIDE_DRAG,
+  LOON_FLOAT_DRIFT,
+  LOON_BOUNCE,
+  LOON_HIT_MIN_SPEED,
   LOON_STROKE_MS,
   LOON_TURN_SPEED,
   LOON_BODY_SIZE,
@@ -129,8 +134,11 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this.loon);
     this.loon.body.setSize(LOON_BODY_SIZE, LOON_BODY_SIZE);
     this.loon.body.setCollideWorldBounds(true);
+    this.loon.body.setBounce(LOON_BOUNCE);
     this.lastLoonX = loonStart.x;
     this.lastLoonY = loonStart.y;
+    this.heading = 0; // Direction the loon faces, before the idle rocking.
+    this.impactSpeed = 0; // Speed going into the latest physics step.
 
     this.physics.add.collider(this.loon, reeds, this.bump, null, this);
     this.physics.add.overlap(this.loon, this.baby, this.reunite, null, this);
@@ -246,10 +254,12 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // The collider fires every frame while pushing into reeds, so only count a
-  // hit (thud and damage) when the loon first touches them, not continuously.
+  // hit when the loon first touches them, not continuously. Gentle nudges
+  // (drifting, easing along a wall) are harmless; only real impacts thud and
+  // cost HP.
   bump() {
     const now = this.time.now;
-    if (now - this.lastBumpTime > 200) {
+    if (now - this.lastBumpTime > 200 && this.impactSpeed >= LOON_HIT_MIN_SPEED) {
       this.audio?.bump();
       this.takeDamage(now);
     }
@@ -327,27 +337,24 @@ export default class GameScene extends Phaser.Scene {
     if (this.gameOver || this.reunited) return;
 
     const { left, right, up, down } = this.cursors;
-    const velocity = new Phaser.Math.Vector2(
+    const input = new Phaser.Math.Vector2(
       (right.isDown ? 1 : 0) - (left.isDown ? 1 : 0),
       (down.isDown ? 1 : 0) - (up.isDown ? 1 : 0),
-    );
+    ).normalize(); // So diagonals aren't faster than straight lines.
+    const paddling = input.lengthSq() > 0;
 
-    // Normalize so diagonal movement isn't faster than straight movement.
-    velocity.normalize().scale(LOON_SPEED);
-    this.loon.body.setVelocity(velocity.x, velocity.y);
+    this.swim(input, paddling, delta);
+    this.animateLoon(paddling, time, delta);
 
-    this.animateLoon(velocity, delta);
-
-    // Compare against last frame's position, which is after the reeds pushed
-    // the loon back (the body's own delta is measured before that happens),
-    // so holding a key while pressed against the reeds doesn't count.
+    // Actual speed, from how far the loon really moved since last frame (after
+    // the reeds pushed it back, so pushing against a wall counts as still).
     const { x, y } = this.loon;
-    const moving = Math.abs(x - this.lastLoonX) + Math.abs(y - this.lastLoonY) > 0.1;
+    const speed = (Math.hypot(x - this.lastLoonX, y - this.lastLoonY) * 1000) / delta;
     this.lastLoonX = x;
     this.lastLoonY = y;
-    if (!moving) return;
+    if (speed < 30) return; // Floating along with the current: no wake.
 
-    this.paddle(time);
+    if (paddling) this.paddle(time);
     if (time >= this.nextWakeTime) {
       const tail = this.pointBehindLoon(22);
       this.wake.emitParticleAt(tail.x, tail.y, 2);
@@ -355,20 +362,41 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
-  // Paddle while a direction is held, and turn smoothly to face it.
-  // (The collision box is square, so turning never changes what the loon hits.)
-  animateLoon(velocity, delta) {
-    if (velocity.lengthSq() === 0) {
+  // Swimming physics. The velocity eases toward a target instead of jumping to
+  // it: full speed in the held direction while paddling, or the gentle lake
+  // current when not, so the loon speeds up, glides to a stop, curves through
+  // turns, and then floats. The body's velocity already includes any bounce
+  // off the reeds from the last physics step, so bounces carry through.
+  swim(input, paddling, delta) {
+    const velocity = this.loon.body.velocity;
+    const target = paddling
+      ? input.clone().scale(LOON_SPEED)
+      : new Phaser.Math.Vector2(WATER_DRIFT.x, WATER_DRIFT.y).scale(LOON_FLOAT_DRIFT);
+    const maxChange = ((paddling ? LOON_ACCELERATION : LOON_GLIDE_DRAG) * delta) / 1000;
+    const change = target.subtract(velocity);
+    if (change.length() > maxChange) change.setLength(maxChange);
+    velocity.add(change);
+    this.impactSpeed = velocity.length();
+  }
+
+  // Paddle while a direction is held; glide with feet tucked otherwise. The
+  // loon faces the way it's actually moving, so turns are curves, and rocks
+  // gently on the water. (The collision box is square, so turning never
+  // changes what the loon hits.)
+  animateLoon(paddling, time, delta) {
+    if (paddling) {
+      this.loon.play('loon-paddle', true);
+    } else if (this.loon.anims.isPlaying) {
       this.loon.stop();
       this.loon.setTexture('loon-top-feet-in');
-      return;
     }
-    this.loon.play('loon-paddle', true);
-    this.loon.rotation = Phaser.Math.Angle.RotateTo(
-      this.loon.rotation,
-      velocity.angle(),
-      (LOON_TURN_SPEED * delta) / 1000,
-    );
+
+    const velocity = this.loon.body.velocity;
+    if (velocity.length() > 25) {
+      this.heading = Phaser.Math.Angle.RotateTo(this.heading, velocity.angle(), (LOON_TURN_SPEED * delta) / 1000);
+    }
+    const rocking = Math.sin(time / 450) * 0.05;
+    this.loon.rotation = this.heading + rocking;
   }
 
   // While swimming: a stroke sound and a splash at each foot every LOON_STROKE_MS.

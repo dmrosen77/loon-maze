@@ -20,7 +20,20 @@ export const MAX_ROWS = 31;
 // How long the reunion cutscene plays before the next level starts (Enter skips it).
 export const REUNION_MS = 8000;
 
+// Top swimming speed, in pixels per second.
 export const LOON_SPEED = 180;
+// Swimming physics, in pixels per second per second. Paddling speeds the loon
+// up (or turns it) at LOON_ACCELERATION; with no keys pressed it glides and
+// slows at LOON_GLIDE_DRAG, then floats with the lake current (WATER_DRIFT
+// times LOON_FLOAT_DRIFT).
+export const LOON_ACCELERATION = 520;
+export const LOON_GLIDE_DRAG = 260;
+export const LOON_FLOAT_DRIFT = 1.5;
+// How much speed the loon keeps when it bounces off the reeds (0 to 1).
+export const LOON_BOUNCE = 0.35;
+// Hitting the reeds slower than this (pixels per second) is a harmless nudge:
+// no HP lost and no thud. Set to 0 to make every touch count.
+export const LOON_HIT_MIN_SPEED = 50;
 // Time between paddling sounds while swimming.
 export const LOON_STROKE_MS = 380;
 // How fast the loon turns to face its swimming direction, in radians per second.
