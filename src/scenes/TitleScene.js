@@ -96,6 +96,16 @@ export default class TitleScene extends Phaser.Scene {
       if (overObjects.length === 0) this.tapped = true;
     });
 
+    // On Android the first tap also goes full screen and holds the screen
+    // sideways. iPhones don't allow web pages to do either; there, "Add to
+    // Home Screen" gives full screen instead.
+    if (isTouchDevice() && this.sys.game.device.fullscreen.available && !this.scale.isFullscreen) {
+      this.input.once('pointerup', () => {
+        this.scale.startFullscreen();
+        this.scale.lockOrientation('landscape');
+      });
+    }
+
     this.cameras.main.fadeIn(500, 0, 0, 0);
     this.startIdleTimer();
   }

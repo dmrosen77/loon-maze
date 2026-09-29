@@ -8,6 +8,10 @@ All notable changes to Loon Maze. The format is based on
 
 ### Added
 - MIT license.
+- Home-screen app support. "Add to Home Screen" gives a Loon Maze icon that opens full screen, with no browser bars. On Android, the first tap on the title also goes full screen and holds the screen sideways.
+
+### Changed
+- On phones with a notch or rounded corners, the game stays inside the visible area.
 
 ## [1.1.0] - 2026-09-29
 
