@@ -6,6 +6,7 @@ import { isTouchDevice } from '../ui/touch.js';
 import loonBigUrl from '../assets/loon-big.png';
 import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
+import PadInput from '../ui/gamepad.js';
 
 // Screen pixels per art pixel. The eagle and loon images come from
 // art-source/ via tools/pixelize.py.
@@ -127,6 +128,7 @@ export default class GameOverScene extends Phaser.Scene {
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.tapped = false;
     this.input.on('pointerdown', () => (this.tapped = true)); // A tap works like Enter.
+    this.pad = new PadInput();
 
     this.time.delayedCall(700, () => this.alert());
     this.time.delayedCall(1300, () => this.swoopIn());
@@ -277,7 +279,8 @@ export default class GameOverScene extends Phaser.Scene {
         .setRotation(this.carrier ? this.carrier.rotation : this.eagle.rotation);
     }
 
-    const pressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped;
+    this.pad.update(time);
+    const pressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped || this.pad.confirm;
     this.tapped = false;
     if (this.canLeave && !this.leaving && pressed) {
       this.leaving = true;

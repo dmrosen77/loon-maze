@@ -14,6 +14,7 @@ import { isTouchDevice } from '../ui/touch.js';
 import { loadHighScores, addHighScore, qualifies, fetchWorldScores, submitWorldScore } from '../highScores.js';
 import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
+import PadInput from '../ui/gamepad.js';
 
 const EAGLE_SCALE = 3;
 const EAGLE_Y = 80;
@@ -84,6 +85,7 @@ export default class HighScoreScene extends Phaser.Scene {
       .setTint(0x6878a0);
 
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
+    this.pad = new PadInput();
     // A tap on the table works like Enter (but not a tap on a button).
     this.tapped = false;
     this.input.on('pointerdown', (pointer, overObjects) => {
@@ -382,9 +384,24 @@ export default class HighScoreScene extends Phaser.Scene {
       this.banner.setPosition(this.eagle.x + BANNER_BEHIND, this.eagle.y + 10);
     }
 
+    // A controller: in attract mode any button goes back to the title; while
+    // entering initials, up/down change the letter, left/right (or B) move,
+    // and A or Start confirm, like the arrow keys and Enter.
+    const { pad } = this;
+    pad.update(time);
+    if (this.attract && pad.any) this.returnToTitle();
+    const typing = Boolean(this.initials);
+    if (typing) {
+      if (pad.pressed('up')) this.changeLetter(1);
+      if (pad.pressed('down')) this.changeLetter(-1);
+      if (pad.pressed('right')) this.moveSlot(1);
+      if (pad.pressed('left') || pad.back) this.moveSlot(-1);
+      if (pad.confirm) this.confirmSlot();
+    }
+
     // Read every frame so earlier presses (like confirming the initials) are
     // used up and don't count as leaving once the table is shown.
-    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped;
+    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped || (!typing && pad.confirm);
     this.tapped = false;
     if (this.canLeave && enterPressed) this.returnToTitle();
   }

@@ -13,6 +13,7 @@ import { STAR, STAR_EMPTY, LOCK, makePixelTexture, makeWaterTexture } from '../a
 import { addMaineMap } from '../art/maineMap.js';
 import { getLakeAudio } from '../audio.js';
 import { isTouchDevice, addMuteButton } from '../ui/touch.js';
+import PadInput from '../ui/gamepad.js';
 import { LAKES, DAYS_PER_LAKE, TIMES_PER_DAY, LEVELS_PER_LAKE } from '../lakes.js';
 import {
   lakeStars,
@@ -74,6 +75,7 @@ export default class LakeMapScene extends Phaser.Scene {
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.escKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC);
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+    this.pad = new PadInput();
     addMuteButton(this, this.audio, width - 12, 12);
     if (data.notice) this.showNotice(data.notice);
     this.cameras.main.fadeIn(300, 0, 0, 0);
@@ -325,12 +327,14 @@ export default class LakeMapScene extends Phaser.Scene {
     if (this.leaving) return;
 
     const { JustDown } = Phaser.Input.Keyboard;
-    if (JustDown(this.muteKey)) this.audio?.toggleMute();
-    if (JustDown(this.cursors.left)) this.move(-1, 0);
-    if (JustDown(this.cursors.right)) this.move(1, 0);
-    if (JustDown(this.cursors.up)) this.move(0, -1);
-    if (JustDown(this.cursors.down)) this.move(0, 1);
-    if (JustDown(this.enterKey)) this.activate();
-    if (JustDown(this.escKey)) this.back();
+    const { pad } = this;
+    pad.update(time);
+    if (JustDown(this.muteKey) || pad.mute) this.audio?.toggleMute();
+    if (JustDown(this.cursors.left) || pad.pressed('left')) this.move(-1, 0);
+    if (JustDown(this.cursors.right) || pad.pressed('right')) this.move(1, 0);
+    if (JustDown(this.cursors.up) || pad.pressed('up')) this.move(0, -1);
+    if (JustDown(this.cursors.down) || pad.pressed('down')) this.move(0, 1);
+    if (JustDown(this.enterKey) || pad.confirm) this.activate();
+    if (JustDown(this.escKey) || pad.back) this.back();
   }
 }

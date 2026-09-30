@@ -17,6 +17,7 @@ import loonBigUrl from '../assets/loon-big.png';
 import babyLoonBigUrl from '../assets/baby-loon-big.png';
 import HpBar from '../ui/HpBar.js';
 import { isLessonDone } from '../progress.js';
+import PadInput from '../ui/gamepad.js';
 import { LAKES, LEVELS_PER_LAKE } from '../lakes.js';
 
 // Screen pixels per art pixel for the big cutscene sprites.
@@ -130,6 +131,7 @@ export default class ReunionScene extends Phaser.Scene {
 
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.input.on('pointerdown', () => this.nextLevel()); // A tap works like Enter.
+    this.pad = new PadInput();
     // A perfect level's celebration gets a few more seconds.
     this.time.delayedCall(REUNION_MS + (this.stars === 3 ? PERFECT_EXTRA_MS : 0), () => this.nextLevel());
   }
@@ -547,7 +549,8 @@ export default class ReunionScene extends Phaser.Scene {
       this.nextWakeTime = time + 30;
     }
 
-    if (Phaser.Input.Keyboard.JustDown(this.enterKey)) {
+    this.pad.update(time);
+    if (Phaser.Input.Keyboard.JustDown(this.enterKey) || this.pad.confirm) {
       this.nextLevel();
     }
   }

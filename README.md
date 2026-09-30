@@ -26,14 +26,17 @@ There are two ways to play, picked from the start menu:
 
 ## Controls
 
-| | Keyboard | Touch |
-|---|---|---|
-| Swim | Arrow keys | Drag anywhere on the screen; drag further to paddle harder |
-| Dive (once unlocked) | Hold Space | Hold the "DIVE" button |
-| Menus and the lake map | Arrow keys, Enter | Tap |
-| Back to the map (LAKES) | Esc | "MAP" button |
-| Start / continue | Enter | Tap |
-| Mute | M | "SOUND" button |
+| | Keyboard | Touch | Gamepad |
+|---|---|---|---|
+| Swim | Arrow keys | Drag anywhere on the screen; drag further to paddle harder | Left stick (tilt further to paddle harder) or d-pad |
+| Dive (once unlocked) | Hold Space | Hold the "DIVE" button | Hold A (or RB / RT) |
+| Menus and the lake map | Arrow keys, Enter | Tap | D-pad or stick, A |
+| Back | Esc | "MAP" / "< LAKES" buttons | B |
+| Back to the map from a LAKES level | Esc | "MAP" button | Start |
+| Start / continue | Enter | Tap | A or Start |
+| Mute | M | "SOUND" button | Select (View / Share) |
+
+Any controller the browser recognizes works (Xbox, PlayStation, Switch Pro and most others; on PlayStation, A is Cross and B is Circle). Browsers only notice a controller once you press one of its buttons.
 
 ## Run it locally
 

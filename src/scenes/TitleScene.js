@@ -14,6 +14,7 @@ import { getLakeAudio } from '../audio.js';
 import { isTouchDevice, addMuteButton } from '../ui/touch.js';
 import { version } from '../../package.json';
 import { hasPlayedLakes, continuePoint } from '../progress.js';
+import PadInput from '../ui/gamepad.js';
 import loonBigUrl from '../assets/loon-big.png';
 import babyLoonBigUrl from '../assets/baby-loon-big.png';
 import reedsClumpUrl from '../assets/reeds-clump.png';
@@ -93,6 +94,7 @@ export default class TitleScene extends Phaser.Scene {
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
     this.upKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
     this.downKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
+    this.pad = new PadInput();
     addMuteButton(this, this.audio, this.scale.width - 12, 12);
 
     // A tap works like Enter (the first one inserts the coin), except on a button.
@@ -122,6 +124,7 @@ export default class TitleScene extends Phaser.Scene {
       this.idleTimer?.remove();
       this.idleTimer = this.time.delayedCall(TITLE_IDLE_MS, () => this.showHighScores());
     };
+    this.restartIdleTimer = restart; // Gamepad presses count too (see update()).
     restart();
     this.input.keyboard.on('keydown', restart);
     this.input.on('pointerdown', restart);
@@ -302,7 +305,8 @@ export default class TitleScene extends Phaser.Scene {
       callback: () => this.prompt.setVisible(this.waitingForSound && !this.prompt.visible),
     });
 
-    this.add
+    this.padHintShown = false;
+    this.controlsHint = this.add
       .text(width / 2, 578, isTouchDevice() ? 'DRAG ANYWHERE TO SWIM' : 'ARROWS: SWIM   M: MUTE', {
         ...TEXT_STYLE,
         fontSize: '12px',
@@ -383,10 +387,22 @@ export default class TitleScene extends Phaser.Scene {
       this.audio?.toggleMute();
     }
 
+    // A controller: say how to play with it, count its presses as activity,
+    // and let any button insert the coin (browsers may still keep the sound
+    // off until a key or tap).
+    this.pad.update(time);
+    if (this.pad.connected && !this.padHintShown) {
+      this.padHintShown = true;
+      this.controlsHint.setText('STICK: SWIM   A: DIVE   SELECT: MUTE');
+    }
+    if (this.pad.any) this.restartIdleTimer();
+    if (this.pad.mute) this.audio?.toggleMute();
+
     // JustDown is read every frame so the key press that turns the sound on
     // doesn't also count as pressing Enter to start.
-    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped;
+    const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped || this.pad.confirm;
     this.tapped = false;
+    if (this.waitingForSound && this.pad.any) this.audio.start();
     if (this.waitingForSound) {
       if (this.audio.started) {
         this.waitingForSound = false;
@@ -398,11 +414,11 @@ export default class TitleScene extends Phaser.Scene {
     }
 
     if (this.starting) return;
-    if (Phaser.Input.Keyboard.JustDown(this.upKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.upKey) || this.pad.pressed('up')) {
       this.chooseMenu(this.menuIndex - 1);
       this.audio?.blip();
     }
-    if (Phaser.Input.Keyboard.JustDown(this.downKey)) {
+    if (Phaser.Input.Keyboard.JustDown(this.downKey) || this.pad.pressed('down')) {
       this.chooseMenu(this.menuIndex + 1);
       this.audio?.blip();
     }

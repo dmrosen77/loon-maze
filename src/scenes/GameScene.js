@@ -70,6 +70,7 @@ import { ripple, popText, hitFlash, heartBurst } from '../game/effects.js';
 import HpBar from '../ui/HpBar.js';
 import AirBar from '../ui/AirBar.js';
 import { TouchStick, addMuteButton, addDiveButton, isTouchDevice } from '../ui/touch.js';
+import PadInput, { isGamepadConnected } from '../ui/gamepad.js';
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -270,6 +271,7 @@ export default class GameScene extends Phaser.Scene {
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
     this.diveKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.stick = new TouchStick(this);
+    this.pad = new PadInput();
     this.diveButton = this.canDive ? addDiveButton(this) : { held: false };
     const muteButton = addMuteButton(this, this.audio, this.scale.width - 12, 34);
     // In LAKES mode (and a lesson from the map), Esc or the MAP button quits to the map.
@@ -562,7 +564,8 @@ export default class GameScene extends Phaser.Scene {
     const index = LESSON_HINTS.findLastIndex((hint) => col >= hint.fromCol);
     if (index === this.lessonHintIndex) return;
     this.lessonHintIndex = index;
-    const text = LESSON_HINTS[index].text.replace('{DIVE}', isTouchDevice() ? 'DIVE' : 'SPACE');
+    const diveName = isGamepadConnected() ? 'A' : isTouchDevice() ? 'DIVE' : 'SPACE';
+    const text = LESSON_HINTS[index].text.replace('{DIVE}', diveName);
     this.lessonHint.setText(text).setAlpha(0);
     this.tweens.add({ targets: this.lessonHint, alpha: 1, duration: 300 });
     if (index > 0) this.audio?.blip(7);
@@ -731,7 +734,7 @@ export default class GameScene extends Phaser.Scene {
   // there are dives left.
   updateDive(time, delta) {
     if (!this.canDive) return;
-    const wantsDive = this.diveKey.isDown || this.diveButton.held;
+    const wantsDive = this.diveKey.isDown || this.diveButton.held || this.pad.diveHeld;
     const pressed = wantsDive && !this.wantedDive;
     this.wantedDive = wantsDive;
 
@@ -810,9 +813,11 @@ export default class GameScene extends Phaser.Scene {
 
   update(time, delta) {
     this.levelStartTime ??= time;
-    if (Phaser.Input.Keyboard.JustDown(this.muteKey)) {
+    this.pad.update(time);
+    if (Phaser.Input.Keyboard.JustDown(this.muteKey) || this.pad.mute) {
       this.audio?.toggleMute();
     }
+    if (this.pad.start && this.leadsToMap()) this.quitToMap();
 
     // Whole pixels only, so the pixel art doesn't shimmer as it drifts.
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
@@ -834,6 +839,7 @@ export default class GameScene extends Phaser.Scene {
       (down.isDown ? 1 : 0) - (up.isDown ? 1 : 0),
     ).normalize(); // So diagonals aren't faster than straight lines.
     if (input.lengthSq() === 0) input = this.stick.vector.clone();
+    if (input.lengthSq() === 0) input = this.pad.stick();
     const paddling = input.lengthSq() > 0;
 
     this.updateDive(time, delta);
