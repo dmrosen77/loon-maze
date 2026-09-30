@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.7.0] - 2026-09-30
+
 ### Fixed
 - **Too-easy diving levels.** Some LAKES levels put the chick just a wall or two from the start, so one dive finished them (Rangeley's Day 1 - Day was the worst). Diving levels are now checked: the chick has to be a fair way across the lake, and your dives can't cut the route to less than half of it (less with more dives). 29 of the 64 diving levels got new mazes. Levels that were fine, and all of Cobbosseecontee, are unchanged.
 
@@ -110,7 +112,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.6.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.7.0...HEAD
+[1.7.0]: https://github.com/dmrosen77/loon-maze/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/dmrosen77/loon-maze/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/dmrosen77/loon-maze/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/dmrosen77/loon-maze/compare/v1.3.1...v1.4.0
