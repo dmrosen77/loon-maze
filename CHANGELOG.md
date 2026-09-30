@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.8.0] - 2026-09-30
+
 ### Changed
 - **Each LAKES day is one run.** Your HP now carries from Dawn through Day and Sunset to Night, with the usual heal after each reunion, and winning a level goes straight on to the next. Survive the whole day to open the next one. Die or quit partway and you start that day again from Dawn. Stars and best scores you won along the way are always kept, and days you've survived can be replayed level by level.
 
@@ -121,7 +123,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.7.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.8.0...HEAD
+[1.8.0]: https://github.com/dmrosen77/loon-maze/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/dmrosen77/loon-maze/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/dmrosen77/loon-maze/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/dmrosen77/loon-maze/compare/v1.4.0...v1.5.0
