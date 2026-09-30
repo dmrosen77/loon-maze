@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.9.0] - 2026-09-30
+
 ### Added
 - **A pause menu.** Esc or P (Start on a gamepad, the new II button on touch screens) pauses a level: RESUME, RESTART LEVEL, QUIT (to the lake map, or the title in ARCADE, which abandons the run) and SOUND. Restarting costs 5 HP (free in the dive lesson) and takes back that attempt's fish points; it's greyed out if you don't have the HP. Paused time doesn't count against the speed bonus or par. The game also pauses by itself when you switch tabs or apps.
 - **Cheeky easter eggs.** Enter certain initials on the high score screen and see what happens: ASS gets a "JUICY!" storm of bouncing peaches, POO a "STINKS!" rain of smiling poops (with sound), and PEE turns the screen yellow ("EWWW..."). ASS still isn't allowed on the world table, so that score stays on the player's device.
@@ -127,7 +129,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.8.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.9.0...HEAD
+[1.9.0]: https://github.com/dmrosen77/loon-maze/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/dmrosen77/loon-maze/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/dmrosen77/loon-maze/compare/v1.6.0...v1.7.0
 [1.6.0]: https://github.com/dmrosen77/loon-maze/compare/v1.5.0...v1.6.0
