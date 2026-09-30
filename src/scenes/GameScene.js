@@ -17,6 +17,7 @@ import {
   LOON_MAX_HP,
   HIT_DAMAGE,
   LOON_INVULNERABLE_MS,
+  RESTART_HP_COST,
   SPRITE_PIXEL_SIZE,
   REED_SWAY_SPEED,
   REED_GUST_SPACING,
@@ -275,11 +276,21 @@ export default class GameScene extends Phaser.Scene {
     this.pad = new PadInput();
     this.diveButton = this.canDive ? addDiveButton(this) : { held: false };
     const muteButton = addMuteButton(this, this.audio, this.scale.width - 12, 34);
-    // In LAKES mode (and a lesson from the map), Esc or the MAP button quits to the map.
-    if (this.leadsToMap()) {
-      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.quitToMap());
-      if (muteButton) this.addMapButton(muteButton);
+
+    // Pausing: Esc or P, Start on a gamepad (see update()), or the II button
+    // on touch screens. Leaving the tab or app pauses too.
+    for (const key of ['ESC', 'P']) {
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes[key]).on('down', () => this.openPause());
     }
+    if (muteButton) this.addPauseButton(muteButton);
+    this.game.events.on(Phaser.Core.Events.BLUR, this.openPause, this);
+    this.game.events.on(Phaser.Core.Events.HIDDEN, this.openPause, this);
+    this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
+    this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.game.events.off(Phaser.Core.Events.BLUR, this.openPause, this);
+      this.game.events.off(Phaser.Core.Events.HIDDEN, this.openPause, this);
+      this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
+    });
   }
 
   // Whether this level ends (or quits) on the lake map rather than in the arcade run.
@@ -287,10 +298,10 @@ export default class GameScene extends Phaser.Scene {
     return this.mode === 'lakes' || (this.lesson && this.startData.then?.mode !== 'arcade');
   }
 
-  // A small "MAP" button beside SOUND on touch screens.
-  addMapButton(muteButton) {
+  // A small pause button beside SOUND on touch screens.
+  addPauseButton(muteButton) {
     const button = this.add
-      .text(muteButton.x - muteButton.width - 8, muteButton.y, 'MAP', {
+      .text(muteButton.x - muteButton.width - 8, muteButton.y, 'II', {
         fontFamily: `"${FONT_FAMILY}"`,
         fontSize: '12px',
         color: '#ffffff',
@@ -303,7 +314,52 @@ export default class GameScene extends Phaser.Scene {
       .setScrollFactor(0)
       .setDepth(DEPTH.hud)
       .setInteractive({ useHandCursor: true });
-    button.on('pointerdown', () => this.quitToMap());
+    button.on('pointerdown', () => this.openPause());
+  }
+
+  // Freezes the level (physics, timers, tweens) under the pause menu.
+  openPause() {
+    if (this.reunited || this.gameOver || this.leaving || !this.scene.isActive()) return;
+    this.pausedAt = this.game.loop.time;
+    const cost = this.lesson ? 0 : RESTART_HP_COST;
+    this.scene.launch('PauseScene', {
+      restartCost: cost,
+      canRestart: this.hp > cost,
+      quitLabel: this.leadsToMap() ? 'QUIT TO MAP' : 'QUIT TO TITLE',
+    });
+    this.scene.pause();
+    this.audio?.blip();
+  }
+
+  // Paused time doesn't count: the level timer (speed bonus, par) and the
+  // post-hit blinking pick up where they left off.
+  onResume() {
+    const paused = this.game.loop.time - this.pausedAt;
+    if (this.levelStartTime !== null) this.levelStartTime += paused;
+    this.invulnerableUntil += paused;
+  }
+
+  // From the pause menu: the level again from the start, for RESTART_HP_COST
+  // HP (free in the lesson). HP is never refilled, and points from this
+  // attempt's fish are taken back.
+  restartLevel() {
+    const data = { ...this.startData };
+    if (!this.lesson) data.hp = this.hp - RESTART_HP_COST;
+    if (this.mode === 'arcade') data.score = this.startData.score ?? 0;
+    this.scene.restart(data);
+  }
+
+  // From the pause menu: back to the lake map (the day's run ends), or in
+  // ARCADE back to the title (the run is abandoned, with no score).
+  quit() {
+    if (this.leadsToMap()) {
+      this.quitToMap();
+      return;
+    }
+    if (this.leaving) return;
+    this.leaving = true;
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('TitleScene'));
   }
 
   quitToMap() {
@@ -823,7 +879,7 @@ export default class GameScene extends Phaser.Scene {
     if (Phaser.Input.Keyboard.JustDown(this.muteKey) || this.pad.mute) {
       this.audio?.toggleMute();
     }
-    if (this.pad.start && this.leadsToMap()) this.quitToMap();
+    if (this.pad.start) this.openPause();
 
     // Whole pixels only, so the pixel art doesn't shimmer as it drifts.
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);

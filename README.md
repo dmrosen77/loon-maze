@@ -31,8 +31,8 @@ There are two ways to play, picked from the start menu:
 | Swim | Arrow keys | Drag anywhere on the screen; drag further to paddle harder | Left stick (tilt further to paddle harder) or d-pad |
 | Dive (once unlocked) | Hold Space | Hold the "DIVE" button | Hold A (or RB / RT) |
 | Menus and the lake map | Arrow keys, Enter | Tap | D-pad or stick, A |
-| Back | Esc | "MAP" / "< LAKES" buttons | B |
-| Back to the map from a LAKES level | Esc | "MAP" button | Start |
+| Back (menus and map) | Esc | "< LAKES" button | B |
+| Pause (resume, restart for 5 HP, quit, sound) | Esc or P | "II" button | Start |
 | Start / continue | Enter | Tap | A or Start |
 | Mute | M | "SOUND" button | Select (View / Share) |
 

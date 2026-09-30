@@ -6,6 +6,10 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **A pause menu.** Esc or P (Start on a gamepad, the new II button on touch screens) pauses a level: RESUME, RESTART LEVEL, QUIT (to the lake map, or the title in ARCADE, which abandons the run) and SOUND. Restarting costs 5 HP (free in the dive lesson) and takes back that attempt's fish points; it's greyed out if you don't have the HP. Paused time doesn't count against the speed bonus or par. The game also pauses by itself when you switch tabs or apps.
+- **Cheeky easter eggs.** Enter certain initials on the high score screen and see what happens: ASS gets a "JUICY!" storm of bouncing peaches, POO a "STINKS!" rain of smiling poops (with sound), and PEE turns the screen yellow ("EWWW..."). ASS still isn't allowed on the world table, so that score stays on the player's device.
+
 ## [1.8.0] - 2026-09-30
 
 ### Changed

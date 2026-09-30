@@ -8,6 +8,7 @@ import ReunionScene from './scenes/ReunionScene.js';
 import GameOverScene from './scenes/GameOverScene.js';
 import HighScoreScene from './scenes/HighScoreScene.js';
 import LakeMapScene from './scenes/LakeMapScene.js';
+import PauseScene from './scenes/PauseScene.js';
 
 // On phones and tablets, widen the game to the screen's sideways shape so it
 // fills the screen instead of leaving black bars. (Measured as if held
@@ -40,7 +41,7 @@ const config = {
     default: 'arcade',
     arcade: { debug: false },
   },
-  scene: [TitleScene, LakeMapScene, GameScene, ReunionScene, GameOverScene, HighScoreScene], // The first one listed starts automatically.
+  scene: [TitleScene, LakeMapScene, GameScene, PauseScene, ReunionScene, GameOverScene, HighScoreScene], // The first one listed starts automatically.
 };
 
 // Phaser draws text with whatever font is ready at the time, so wait for the

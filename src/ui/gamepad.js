@@ -6,7 +6,7 @@ import * as Phaser from 'phaser';
 // are Xbox's; on PlayStation A is Cross and B is Circle.
 //   Left stick or d-pad: swim, and move around menus and the lake map.
 //   A: dive (hold), and confirm. RB or RT also dive.
-//   Start: confirm; in a LAKES level, quit to the map.
+//   Start: confirm; in a level, pause.
 //   B: back.  Select (View / Share): mute.
 // Browsers only reveal a controller after one of its buttons is pressed.
 

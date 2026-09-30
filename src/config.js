@@ -111,6 +111,9 @@ export const LOON_MAX_HP = 50;
 export const HIT_DAMAGE = 1;
 export const REUNION_HEAL = 5;
 export const LOON_INVULNERABLE_MS = 1500;
+// Restarting a level from the pause menu costs this much HP (never refills
+// it), so it isn't a free way out of a bad attempt. Free in the dive lesson.
+export const RESTART_HP_COST = 5;
 // Square collision box, so walls behave the same whichever way the loon faces.
 // The sprite is a bit longer than this, so its head can poke into the reeds.
 // Smaller leaves more room in the 40px corridors.
