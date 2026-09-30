@@ -13,7 +13,7 @@ Guide a loon through a maze of reeds to reunite with its chick, before the bald 
 
 There are two ways to play, picked from the start menu:
 
-- **LAKES:** five Maine lakes, from little Cobbosseecontee to Moosehead, chosen on a map of Maine. Each lake is 4 days of 4 levels (dawn, day, sunset and night), 80 levels in all. Every level has the same maze each time and saves your best stars and score, so you can replay levels to earn more stars. Earn 32 of a lake's 48 stars to open the next one. **CONTINUE** takes you straight back to the next level you haven't beaten. Progress is saved in your browser.
+- **LAKES:** five Maine lakes, from little Cobbosseecontee to Moosehead, chosen on a map of Maine. Each lake is 4 days of 4 levels (dawn, day, sunset and night), 80 levels in all. Each day is one run: your HP carries from Dawn to Night, and surviving the day opens the next one (die partway and you start the day again from Dawn). Every level has the same maze each time and saves your best stars and score, so you can replay the days you've survived to earn more stars. Earn 32 of a lake's 48 stars to open the next lake. **CONTINUE** takes you straight back to the next level you haven't beaten. Progress is saved in your browser.
 - **ARCADE:** one endless run of random mazes, with your HP carrying from level to level, for the high score table.
 
 - **Find the chick.** Mazes get bigger and more tangled as you go, with more forks and dead ends. Big mazes scroll as you swim.
@@ -61,7 +61,7 @@ Out of the box, high scores are saved in the browser, so each device has its own
 npm run scores-server
 ```
 
-It's a small Node server with no dependencies. It listens on `127.0.0.1:3010` and keeps the top 10 in `data/scores.json` (set `PORT`, `HOST` or `DATA_DIR` to change these). It checks every entry: initials must be three letters or digits and not rude, the score must be possible for the level reached, and each visitor can only submit a few times every 10 minutes.
+It's a small Node server with no dependencies. It listens on `127.0.0.1:3010` and keeps the top 10 in `data/scores.json` (set `PORT`, `HOST` or `DATA_DIR` to change these). It checks every entry to keep the table honest: initials must be three letters or digits and not rude, the level must be realistic and the score possible for it, and each score needs the one-time ticket the game got when the run started, used only after enough real time has passed to have played that far. Each visitor can only start and submit a few runs every 10 minutes. To take a bad entry off the table, `server/remove-score.js` edits the file (with the server stopped).
 
 The game asks for scores at `api/scores` on its own site, so pass that path to the server from your web server. There's an nginx example in [`server/nginx-api.conf`](server/nginx-api.conf) and a systemd unit in [`server/loon-maze-scores.service`](server/loon-maze-scores.service). While developing, `npm run dev` already passes `/api` to a local score server. The high score screen shows **WORLD** when it's using the shared table, and **THIS DEVICE** when the server can't be reached.
 

@@ -6,6 +6,15 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- **Each LAKES day is one run.** Your HP now carries from Dawn through Day and Sunset to Night, with the usual heal after each reunion, and winning a level goes straight on to the next. Survive the whole day to open the next one. Die or quit partway and you start that day again from Dawn. Stars and best scores you won along the way are always kept, and days you've survived can be replayed level by level.
+
+### Security
+- **Harder to fake high scores.** Each ARCADE run now gets a one-time ticket from the score server when it starts, and a score is only accepted with its run's ticket, once, and only after enough real time has passed to have played that far. Levels over 99 are refused. `npm run remove-score -- NAME [SCORE]` takes a bad entry off the world table.
+- The score server's rate limit now only trusts Cloudflare's visitor-IP header (or the real connection), not `X-Forwarded-For`, which anyone can fake.
+- The score server runs sandboxed by systemd: no privilege gain, a read-only system except its scores folder, and a memory cap.
+- The hosted site sends security headers: a Content Security Policy (everything from this site only), `nosniff`, a referrer policy, no framing, and no camera, microphone or location access.
+
 ## [1.7.0] - 2026-09-30
 
 ### Fixed

@@ -11,6 +11,7 @@ import {
 } from '../config.js';
 import { STAR, STAR_EMPTY, LOCK, makePixelTexture, makeWaterTexture } from '../art/pixelArt.js';
 import { addMaineMap } from '../art/maineMap.js';
+import { lakeStart } from '../levelPlan.js';
 import { getLakeAudio } from '../audio.js';
 import { isTouchDevice, addMuteButton } from '../ui/touch.js';
 import PadInput from '../ui/gamepad.js';
@@ -221,6 +222,13 @@ export default class LakeMapScene extends Phaser.Scene {
     }
 
     this.drawPrompt(isTouchDevice() ? 'TAP A LEVEL' : 'ARROWS: CHOOSE   ENTER: PLAY   ESC: LAKES');
+    this.add
+      .text(width / 2, this.scale.height - 40, 'EACH DAY IS ONE RUN FROM DAWN TO NIGHT. SURVIVE IT TO OPEN THE NEXT', {
+        ...TEXT_STYLE,
+        fontSize: '10px',
+        color: '#9fc3e0',
+      })
+      .setOrigin(0.5);
     const select = data.select ?? this.items.findLast((item) => item.open && !item.lesson)?.number ?? 1;
     const index = this.items.findIndex((item) => item.number === Math.min(select, LEVELS_PER_LAKE));
     this.select(Math.max(0, index));
@@ -304,9 +312,7 @@ export default class LakeMapScene extends Phaser.Scene {
   // Plays a lake level, with the dive lesson first if it's the first diving
   // level this device has played.
   startLevel(lake, number) {
-    const level = { mode: 'lakes', lake, number };
-    if (LAKE_FEATURES[lake].dives > 0 && !isLessonDone()) this.go('GameScene', { lesson: true, then: level });
-    else this.go('GameScene', level);
+    this.go('GameScene', lakeStart(lake, number));
   }
 
   back() {

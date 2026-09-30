@@ -18,7 +18,8 @@ import babyLoonBigUrl from '../assets/baby-loon-big.png';
 import HpBar from '../ui/HpBar.js';
 import { isLessonDone } from '../progress.js';
 import PadInput from '../ui/gamepad.js';
-import { LAKES, LEVELS_PER_LAKE } from '../lakes.js';
+import { LAKES, LEVELS_PER_LAKE, TIMES_PER_DAY } from '../lakes.js';
+import { lakeStart } from '../levelPlan.js';
 
 // Screen pixels per art pixel for the big cutscene sprites.
 const BIG_PIXEL = 4;
@@ -70,8 +71,8 @@ export default class ReunionScene extends Phaser.Scene {
     this.fishPoints = data.fishPoints ?? 0;
     this.stars = data.stars ?? 1;
     this.starImages = [];
-    // LAKES mode: each level stands alone, so there's no HP to heal; instead
-    // it says whether this was a new best, and goes back to the lake map.
+    // LAKES mode: it also says whether this was a new best, and then carries
+    // on to the day's next level (with HP), or back to the lake map after Night.
     this.mode = data.mode ?? 'arcade';
     this.lake = data.lake;
     this.number = data.number;
@@ -117,7 +118,7 @@ export default class ReunionScene extends Phaser.Scene {
     this.baby = this.add.image(width + 100, PARENT_REST_Y - 30, 'baby-loon-big').setScale(CHICK_PIXEL).setFlipX(true);
 
     // The HP bar (label, gap and 300px bar: 340px in all) is centered.
-    this.hpBar = this.mode === 'lakes' ? null : new HpBar(this, width / 2 - 170, 490, {
+    this.hpBar = new HpBar(this, width / 2 - 170, 490, {
       width: 300,
       height: 16,
       max: LOON_MAX_HP,
@@ -216,7 +217,8 @@ export default class ReunionScene extends Phaser.Scene {
     });
 
     this.showTitle();
-    this.time.delayedCall(1100, () => (this.hpBar ? this.heal() : this.showNewBest()));
+    this.time.delayedCall(1100, () => this.heal());
+    this.time.delayedCall(1500, () => this.showNewBest());
     this.time.delayedCall(700, () => this.showPoints());
     this.time.delayedCall(1000, () => this.showStars());
   }
@@ -426,13 +428,13 @@ export default class ReunionScene extends Phaser.Scene {
     });
   }
 
-  // LAKES mode: "NEW BEST!" where the HP bar would be, if it was one.
+  // LAKES mode: "NEW BEST!" beside the stars, if it was one.
   showNewBest() {
     if (!this.newBest) return;
     const { width } = this.scale;
     const label = this.add
-      .text(width / 2, 486, 'NEW BEST!', { ...TEXT_STYLE, fontSize: '24px', color: TITLE_COLORS.title })
-      .setOrigin(0.5)
+      .text(width / 2 + 90, 150, 'NEW BEST!', { ...TEXT_STYLE, fontSize: '14px', strokeThickness: 5, color: TITLE_COLORS.title })
+      .setOrigin(0, 0.5)
       .setScale(0);
     this.tweens.add({ targets: label, scale: 1, duration: 400, ease: 'Back.easeOut' });
     this.audio?.coin();
@@ -507,7 +509,7 @@ export default class ReunionScene extends Phaser.Scene {
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       if (this.mode === 'lakes') {
-        this.backToMap();
+        this.afterLakeLevel();
         return;
       }
       // The first time a run reaches diving, the dive lesson comes first.
@@ -521,16 +523,22 @@ export default class ReunionScene extends Phaser.Scene {
     });
   }
 
-  // Back to the lake map: the next level selected, or the lakes view if this
-  // finished the lake or opened a new one.
-  backToMap() {
-    if (this.unlockedLake !== null) {
-      const name = LAKES[this.unlockedLake].name.toUpperCase();
-      this.scene.start('LakeMapScene', { view: 'lakes', lake: this.unlockedLake, notice: `${name} UNLOCKED!` });
+  // LAKES: on to the day's next time of day, carrying HP (and announcing a
+  // lake this just unlocked). After Night, back to the map: the next level
+  // selected, or the lakes view if this finished the lake or opened a new one.
+  afterLakeLevel() {
+    const unlockedName = this.unlockedLake !== null ? LAKES[this.unlockedLake].name.toUpperCase() : null;
+    const endOfDay = this.number % TIMES_PER_DAY === 0;
+    if (!endOfDay) {
+      const notice = unlockedName ? `${unlockedName} UNLOCKED!` : undefined;
+      this.scene.start('GameScene', lakeStart(this.lake, this.number + 1, { hp: this.healedHp, notice }));
+    } else if (unlockedName) {
+      this.scene.start('LakeMapScene', { view: 'lakes', lake: this.unlockedLake, notice: `${unlockedName} UNLOCKED!` });
     } else if (this.number >= LEVELS_PER_LAKE) {
       this.scene.start('LakeMapScene', { view: 'lakes', lake: this.lake, notice: 'LAKE COMPLETE!' });
     } else {
-      this.scene.start('LakeMapScene', { view: 'lake', lake: this.lake, select: this.number + 1 });
+      const day = this.number / TIMES_PER_DAY;
+      this.scene.start('LakeMapScene', { view: 'lake', lake: this.lake, select: this.number + 1, notice: `DAY ${day} SURVIVED!` });
     }
   }
 

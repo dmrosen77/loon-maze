@@ -34,11 +34,26 @@ import { plainMaze } from './mazes/terrain.js';
 import { isGoodDivingMaze } from './mazes/mazeQuality.js';
 import { timeOfDayForLevel } from './game/Lighting.js';
 import { lakeLevel } from './lakes.js';
+import { isLessonDone } from './progress.js';
+
+// The GameScene start for a LAKES level: `hp` carries over within a day
+// (full HP if left out, as when starting from the map), `notice` is an extra
+// callout (like a lake just unlocked), and the dive lesson comes first if the
+// lake has diving and this device hasn't done the lesson yet.
+export function lakeStart(lake, number, { hp, notice } = {}) {
+  const level = { mode: 'lakes', lake, number, hp, notice };
+  if (LAKE_FEATURES[lake].dives > 0 && !isLessonDone()) return { lesson: true, then: level };
+  return level;
+}
 
 // data: { mode: 'arcade', level } | { mode: 'lakes', lake, number } | { lesson: true, ... }
 export default function levelPlan(data = {}) {
   if (data.lesson) return lessonPlan();
-  if (data.mode === 'lakes') return lakePlan(data.lake, data.number);
+  if (data.mode === 'lakes') {
+    const plan = lakePlan(data.lake, data.number);
+    if (data.notice) plan.callouts.unshift(data.notice);
+    return plan;
+  }
   return arcadePlan(data.level ?? 1);
 }
 

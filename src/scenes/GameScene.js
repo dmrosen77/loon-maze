@@ -41,8 +41,8 @@ import {
 } from '../config.js';
 import { LESSON_HINTS } from '../mazes/diveLesson.js';
 import levelPlan from '../levelPlan.js';
-import { recordLevel, isLakeUnlocked, markLessonDone, setLastPlayed } from '../progress.js';
-import { LAKES } from '../lakes.js';
+import { recordLevel, isLakeUnlocked, markLessonDone, setLastPlayed, markDayCleared, restartPoint } from '../progress.js';
+import { LAKES, TIMES_PER_DAY } from '../lakes.js';
 import {
   LOON_TOP_FEET_OUT,
   LOON_TOP_FEET_IN,
@@ -122,7 +122,8 @@ export default class GameScene extends Phaser.Scene {
   // - { mode: 'arcade', level, hp, score }: HP and score carry over from the
   //   last level (via the reunion cutscene); a new game is level 1 with full
   //   HP and no score.
-  // - { mode: 'lakes', lake, number }: one lake level, full HP, no score.
+  // - { mode: 'lakes', lake, number, hp, notice }: one lake level, no score;
+  //   HP carries over within a day (see ReunionScene), full from the map.
   // - { lesson: true, then, hp, score }: the dive lesson, which then starts
   //   `then` (another GameScene start), or goes back to the lake map if none.
   create(data = {}) {
@@ -141,7 +142,7 @@ export default class GameScene extends Phaser.Scene {
     this.reunited = false;
     this.gameOver = false;
     this.leaving = false;
-    this.hp = this.mode === 'lakes' ? LOON_MAX_HP : (data.hp ?? LOON_MAX_HP);
+    this.hp = data.hp ?? LOON_MAX_HP; // Carried over in ARCADE and within a LAKES day.
     this.score = this.mode === 'lakes' ? 0 : (data.score ?? 0);
     if (this.mode === 'lakes') setLastPlayed(this.plan.lake, this.plan.number);
     this.invulnerableUntil = 0;
@@ -311,7 +312,8 @@ export default class GameScene extends Phaser.Scene {
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       const lake = this.plan.lake ?? this.startData.then?.lake ?? 1;
-      this.scene.start('LakeMapScene', { view: 'lake', lake, select: this.plan.number ?? 1 });
+      const select = this.plan.number ? restartPoint(lake, this.plan.number) : 1;
+      this.scene.start('LakeMapScene', { view: 'lake', lake, select });
     });
   }
 
@@ -688,6 +690,10 @@ export default class GameScene extends Phaser.Scene {
           const nextLake = lake + 1 < LAKES.length ? lake + 1 : null;
           const wasOpen = nextLake !== null && isLakeUnlocked(nextLake);
           const best = recordLevel(lake, number, { stars, score: total });
+          // Winning Night means the whole day was survived in one run (a day's
+          // later levels can't be picked on the map until it has been).
+          const dayCleared = number % TIMES_PER_DAY === 0;
+          if (dayCleared) markDayCleared(lake, number / TIMES_PER_DAY - 1);
           Object.assign(reunion, {
             lake,
             number,

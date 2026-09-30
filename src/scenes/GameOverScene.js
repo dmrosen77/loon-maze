@@ -7,6 +7,7 @@ import loonBigUrl from '../assets/loon-big.png';
 import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
 import PadInput from '../ui/gamepad.js';
+import { restartPoint } from '../progress.js';
 
 // Screen pixels per art pixel. The eagle and loon images come from
 // art-source/ via tools/pixelize.py.
@@ -287,7 +288,9 @@ export default class GameOverScene extends Phaser.Scene {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
         if (this.mode === 'lakes') {
-          this.scene.start('LakeMapScene', { view: 'lake', lake: this.lake, select: this.number });
+          // The day's run is over: back to its Dawn (unless it was already survived).
+          const select = restartPoint(this.lake, this.number);
+          this.scene.start('LakeMapScene', { view: 'lake', lake: this.lake, select, notice: 'TRY THE DAY AGAIN' });
         } else {
           this.scene.start('HighScoreScene', { score: this.score, level: this.level });
         }

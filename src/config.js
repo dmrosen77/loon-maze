@@ -52,14 +52,16 @@ export const LAKE_MIN_DIVE_SHARE = { 1: 0.5, 2: 0.4, 3: 0.35, 4: 0.3 };
 export const LAKE_MAZE_TRIES = 60;
 
 // What each lake adds, in LAKES order: dives per level (0 = no diving yet),
-// and whether extra-dive bubbles can appear. Diving starts at the second lake,
-// after the dive lesson.
+// whether extra-dive bubbles can appear, whether snapping turtles patrol, and
+// how far the chick wanders from its spot (0 = it stays put). Diving starts
+// at the second lake, after the dive lesson; turtles and a wandering chick at
+// the third.
 export const LAKE_FEATURES = [
-  { dives: 0, bubbles: false },
-  { dives: 1, bubbles: true },
-  { dives: 2, bubbles: true },
-  { dives: 3, bubbles: true },
-  { dives: 4, bubbles: true },
+  { dives: 0, bubbles: false, turtles: false, chickWander: 0 },
+  { dives: 1, bubbles: true, turtles: false, chickWander: 0 },
+  { dives: 2, bubbles: true, turtles: true, chickWander: 1 },
+  { dives: 3, bubbles: true, turtles: true, chickWander: 2 },
+  { dives: 4, bubbles: true, turtles: true, chickWander: 2 },
 ];
 
 // How long the reunion cutscene plays before the next level starts (Enter skips it).
@@ -155,8 +157,33 @@ export const REED_GUST_SPACING = 360;
 // level banner. (Diving has its own DIVE_UNLOCK_LEVEL, above.)
 export const FEATURE_LEVELS = {
   fish: 2,
+  turtles: 4,
+  chickWander: 5,
   diveBubbles: 7,
 };
+
+// Snapping turtles (src/game/Turtles.js) patrol straight stretches of open
+// water, never within TURTLE_START_CLEAR tiles of the start. Swimming into one
+// on the surface costs TURTLE_DAMAGE HP and knocks the loon back at
+// TURTLE_KNOCKBACK; diving passes under them. A level has up to TURTLE_MAX.
+// ARCADE adds one every TURTLE_EVERY_LEVELS levels from FEATURE_LEVELS.turtles;
+// LAKES starts with one on each lake's Day 1 and adds one a day, plus two per
+// lake after the first with turtles.
+export const TURTLE_SPEED = 45;
+export const TURTLE_DAMAGE = 3;
+export const TURTLE_KNOCKBACK = 240;
+export const TURTLE_START_CLEAR = 4;
+export const TURTLE_MAX = 6;
+export const TURTLE_EVERY_LEVELS = 3;
+
+// The wandering chick paddles to a neighboring tile every
+// CHICK_WANDER_PAUSE_MS (a random time in that range), staying within its
+// wander range (tiles from its spot). In ARCADE the range starts at 1 on
+// FEATURE_LEVELS.chickWander and grows by one every CHICK_WANDER_GROWTH
+// levels, up to CHICK_WANDER_MAX; LAKES sets it per lake (LAKE_FEATURES).
+export const CHICK_WANDER_PAUSE_MS = [900, 2000];
+export const CHICK_WANDER_GROWTH = 8;
+export const CHICK_WANDER_MAX = 3;
 
 // Special walls and patches (src/mazes/terrain.js), from level 1. They all
 // block the loon on the surface like reeds, so every maze stays solvable;
