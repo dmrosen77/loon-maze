@@ -15,6 +15,7 @@ import { loadHighScores, addHighScore, qualifies, fetchWorldScores, submitWorldS
 import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
 import PadInput from '../ui/gamepad.js';
+import { hasEasterEgg, playEasterEgg } from '../game/easterEggs.js';
 
 const EAGLE_SCALE = 3;
 const EAGLE_Y = 80;
@@ -215,7 +216,7 @@ export default class HighScoreScene extends Phaser.Scene {
       .text(width / 2, 490, 'OK', { ...TEXT_STYLE, fontSize: '24px', backgroundColor: 'rgba(0, 0, 0, 0.4)', padding: { x: 18, y: 10 } })
       .setOrigin(0.5);
     parts.push(ok);
-    tappable(width / 2, 490, 160, 64, () => this.saveInitials());
+    tappable(width / 2, 490, 160, 64, () => this.finishInitials());
     return parts;
   }
 
@@ -238,15 +239,24 @@ export default class HighScoreScene extends Phaser.Scene {
       this.moveSlot(1);
       return;
     }
-    this.saveInitials();
+    this.finishInitials();
+  }
+
+  // Enter on the last letter, or the OK button, saves the initials. Some
+  // cheeky ones get a silly show first (src/game/easterEggs.js).
+  finishInitials() {
+    if (!this.initials) return;
+    const name = this.initials.join('');
+    this.initials = null; // No more typing.
+    if (hasEasterEgg(name)) playEasterEgg(this, name, this.audio).then(() => this.saveInitials(name));
+    else this.saveInitials(name);
   }
 
   // Save (on this device, and to the world table when there is one), clear
   // the entry screen, and bring on the table.
-  saveInitials() {
-    if (!this.initials) return;
-    const entry = { name: this.initials.join(''), score: this.score, level: this.level };
-    this.initials = null;
+  saveInitials(name) {
+    if (!this.sys.isActive()) return;
+    const entry = { name, score: this.score, level: this.level };
     this.audio?.heal();
     const localRank = addHighScore(entry);
     const saved = this.worldScores ? submitWorldScore(entry) : Promise.resolve(null);

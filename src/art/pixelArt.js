@@ -201,6 +201,48 @@ export const COIN = {
   ],
 };
 
+// Easter egg sprites for cheeky initials (src/game/easterEggs.js): a peach,
+// a smiling poop, a wavy green stink line and a yellow drip.
+export const PEACH = {
+  palette: { G: '#2e7d32', g: '#5cb85c', o: '#c2567a', c: '#e0708e', p: '#ffb088', P: '#ffdcc8', r: '#ff7a8a' },
+  rows: [
+    '....Gg.....',
+    '...Ggg.....',
+    '..ooocooo..',
+    '.oPPpcppro.',
+    'oPPppcprrro',
+    'oPpppcprrro',
+    'opppppcrrro',
+    'oppppcprrro',
+    '.opppppprro',
+    '..ooppproo.',
+    '....ooo....',
+  ],
+};
+export const POOP = {
+  palette: { d: '#4a2b10', b: '#8b5a2b', l: '#b07a45', w: '#ffffff', k: '#111111', m: '#2b1706' },
+  rows: [
+    '.....d.....',
+    '....dbd....',
+    '...dblbd...',
+    '..ddbbbdd..',
+    '.dbwkbwkbd.',
+    '.dbwkbwkbd.',
+    'ddlbbbbblbd',
+    'dbmbbbbbmbd',
+    'dbbmmmmmbbd',
+    '.ddddddddd.',
+  ],
+};
+export const STINK = {
+  palette: { g: '#8bc34a' },
+  rows: ['.g', 'g.', '.g', 'g.', '.g', 'g.'],
+};
+export const DRIP = {
+  palette: { y: '#c99700', Y: '#e8b923' },
+  rows: ['.Y.', 'yYy', 'yyy', '.y.'],
+};
+
 // A padlock, for locked levels and lakes on the lake map.
 export const LOCK = {
   palette: { k: '#15181c', g: '#d4d9e0', d: '#9aa2ac' },

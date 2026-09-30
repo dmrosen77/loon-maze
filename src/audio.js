@@ -506,6 +506,102 @@ class LakeAudio {
     }
   }
 
+  // ----- Easter egg sounds (src/game/easterEggs.js).
+
+  // A juicy squish and a bouncy boing.
+  boing() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    this.splash(600, 2400, 0.12, 0.3);
+    const osc = ctx.createOscillator();
+    osc.frequency.setValueAtTime(160, t);
+    osc.frequency.exponentialRampToValueAtTime(620, t + 0.12);
+    osc.frequency.exponentialRampToValueAtTime(240, t + 0.4);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.3, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.45);
+    osc.connect(gain).connect(this.sfxBus);
+    osc.start(t);
+    osc.stop(t + 0.46);
+  }
+
+  // A long, wobbly raspberry: a low buzzy sawtooth whose pitch and volume
+  // flutter, through a muffling filter, sagging at the end.
+  fart() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const length = 1.1;
+    const osc = ctx.createOscillator();
+    osc.type = 'sawtooth';
+    osc.frequency.setValueAtTime(95, t);
+    osc.frequency.linearRampToValueAtTime(70, t + length * 0.7);
+    osc.frequency.linearRampToValueAtTime(48, t + length);
+    const flutter = ctx.createOscillator();
+    flutter.frequency.setValueAtTime(22, t);
+    flutter.frequency.linearRampToValueAtTime(14, t + length);
+    const flutterDepth = ctx.createGain();
+    flutterDepth.gain.value = 18;
+    flutter.connect(flutterDepth).connect(osc.frequency);
+    const filter = ctx.createBiquadFilter();
+    filter.type = 'lowpass';
+    filter.frequency.value = 520;
+    filter.Q.value = 4;
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0, t);
+    gain.gain.linearRampToValueAtTime(0.45, t + 0.05);
+    gain.gain.setValueAtTime(0.45, t + length * 0.6);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + length);
+    const tremolo = ctx.createGain();
+    const tremoloLfo = ctx.createOscillator();
+    tremoloLfo.frequency.value = 11;
+    const tremoloDepth = ctx.createGain();
+    tremoloDepth.gain.value = 0.35;
+    tremolo.gain.value = 0.65;
+    tremoloLfo.connect(tremoloDepth).connect(tremolo.gain);
+    osc.connect(filter).connect(tremolo).connect(gain).connect(this.sfxBus);
+    for (const node of [osc, flutter, tremoloLfo]) {
+      node.start(t);
+      node.stop(t + length + 0.05);
+    }
+  }
+
+  // A trickle: lots of tiny high plinks over a second and a half.
+  trickle() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    for (let i = 0; i < 40; i++) {
+      const at = t + Math.random() * 1.5;
+      this.chipNote('sine', 1400 + Math.random() * 1800, at, 0.05, 0.05, this.sfxBus);
+    }
+    this.splash(3000, 5000, 1.5, 0.08);
+  }
+
+  // A sad, sagging "ewww".
+  ewww() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.type = 'square';
+    osc.frequency.setValueAtTime(420, t);
+    osc.frequency.exponentialRampToValueAtTime(160, t + 0.8);
+    const vibrato = ctx.createOscillator();
+    vibrato.frequency.value = 7;
+    const depth = ctx.createGain();
+    depth.gain.value = 12;
+    vibrato.connect(depth).connect(osc.frequency);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.09, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.9);
+    osc.connect(gain).connect(this.sfxBus);
+    for (const node of [osc, vibrato]) {
+      node.start(t);
+      node.stop(t + 0.92);
+    }
+  }
+
   // A star appearing on the reunion screen; each one (0, 1, 2) a step higher.
   star(index) {
     if (!this.started) return;
