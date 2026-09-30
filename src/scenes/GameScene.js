@@ -18,6 +18,8 @@ import {
   HIT_DAMAGE,
   LOON_INVULNERABLE_MS,
   RESTART_HP_COST,
+  TURTLE_DAMAGE,
+  TURTLE_KNOCKBACK,
   SPRITE_PIXEL_SIZE,
   REED_SWAY_SPEED,
   REED_GUST_SPACING,
@@ -67,6 +69,8 @@ import Lighting from '../game/Lighting.js';
 import Decor from '../game/Decor.js';
 import Fish from '../game/Fish.js';
 import Pickups from '../game/Pickups.js';
+import Turtles from '../game/Turtles.js';
+import WanderingChick from '../game/WanderingChick.js';
 import { ripple, popText, hitFlash, heartBurst } from '../game/effects.js';
 import HpBar from '../ui/HpBar.js';
 import AirBar from '../ui/AirBar.js';
@@ -96,6 +100,9 @@ function waterSides(maze, col, row) {
 
 // Layers, bottom to top. The time-of-day tint covers everything below it;
 // night glows, pop-up effects and the HUD sit above it.
+// How close (center to center, in pixels) the loon has to get to reach the chick.
+const REUNITE_DISTANCE = 20;
+
 const DEPTH = {
   water: 0,
   pads: 1,
@@ -104,6 +111,7 @@ const DEPTH = {
   reeds: 3,
   ripples: 4,
   chick: 5,
+  turtles: 5.5,
   loon: 6,
   bubbles: 7,
   critters: 8,
@@ -219,7 +227,6 @@ export default class GameScene extends Phaser.Scene {
     this.baby = this.add.image(babyStart.x, babyStart.y, 'baby-loon-top').setDepth(DEPTH.chick);
     const towardParent = Phaser.Math.Angle.BetweenPoints(babyStart, loonStart);
     this.baby.rotation = Phaser.Math.Snap.To(towardParent, Math.PI / 2);
-    this.physics.add.existing(this.baby, true);
 
     // The bounds leave out the maze's outer ring of reeds, so a diving loon
     // can't swim under it to the edge of the lake.
@@ -234,10 +241,10 @@ export default class GameScene extends Phaser.Scene {
     this.heading = 0; // Direction the loon faces, before the idle rocking.
     this.impactSpeed = 0; // Speed going into the latest physics step.
 
-    // Diving switches the reeds' collider off; the chick is only reached on the surface.
+    // Diving switches the reeds' collider off.
     this.reedCollider = this.physics.add.collider(this.loon, reeds, this.bump, null, this);
     this.physics.add.collider(this.loon, rocks, this.bump, null, this); // Rocks go down to the lakebed.
-    this.physics.add.overlap(this.loon, this.baby, this.reunite, () => !this.diving, this);
+    // Reaching the chick is a distance check in update() (it may be wandering).
 
     camera.startFollow(this.loon, true);
     camera.centerOn(loonStart.x, loonStart.y);
@@ -267,6 +274,22 @@ export default class GameScene extends Phaser.Scene {
           onGrab: (x, y) => this.grabDiveBubble(x, y),
         })
       : null;
+    this.turtles = this.plan.turtles
+      ? new Turtles(this, this.info, {
+          count: this.plan.turtles,
+          depth: DEPTH.turtles,
+          random: this.plan.random,
+          onBite: (turtle) => this.turtleBite(turtle),
+        })
+      : null;
+    if (this.plan.chickWander) {
+      new WanderingChick(this, this.baby, this.info, {
+        radius: this.plan.chickWander,
+        onMove: () => {
+          if (this.cameras.main.worldView.contains(this.baby.x, this.baby.y)) this.audio?.peep();
+        },
+      });
+    }
     this.showLevelText();
 
     this.cursors = this.input.keyboard.createCursorKeys();
@@ -571,6 +594,19 @@ export default class GameScene extends Phaser.Scene {
       this.addScore(FISH_POINTS);
       popText(this, x, y, `+${FISH_POINTS}`, { depth: DEPTH.effects });
     }
+  }
+
+  // A snapping turtle bit the loon (on the surface): a snap, a knockback away
+  // from the turtle, and TURTLE_DAMAGE HP, unless it's still blinking from a hit.
+  turtleBite(turtle) {
+    const now = this.time.now;
+    if (this.reunited || this.gameOver || now < this.invulnerableUntil) return;
+    this.audio?.snap();
+    const away = Phaser.Math.Angle.Between(turtle.x, turtle.y, this.loon.x, this.loon.y);
+    this.loon.body.velocity.setToPolar(away, TURTLE_KNOCKBACK);
+    ripple(this, this.loon.x, this.loon.y, { depth: DEPTH.ripples, radius: 18 });
+    popText(this, this.loon.x, this.loon.y - 16, 'SNAP!', { depth: DEPTH.effects, color: '#ff6a6a' });
+    this.takeDamage(now, TURTLE_DAMAGE);
   }
 
   // An extra dive for this level.
@@ -887,7 +923,12 @@ export default class GameScene extends Phaser.Scene {
     this.decor.update(this.loon);
     if (this.lesson && !this.reunited) this.updateLessonHint();
     if (!this.reunited && !this.gameOver) {
+      // The chick is reached on the surface, when the two are touching.
+      if (!this.diving && Phaser.Math.Distance.Between(this.loon.x, this.loon.y, this.baby.x, this.baby.y) < REUNITE_DISTANCE) {
+        this.reunite();
+      }
       this.fish.update(this.loon);
+      this.turtles?.update(this.loon, this.diving, time);
       this.pickups?.update(this.loon);
     }
 

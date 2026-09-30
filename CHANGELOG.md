@@ -6,6 +6,14 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **Snapping turtles.** They patrol straight stretches of open water, paddling back and forth. Swim into one and it snaps: 3 HP and a knockback. Turtles on the way to the chick sink under the water every few seconds (a dark shadow with bubbles, bubbling harder just before they come back up), so you can time your way over them. A turtle can't bite you while it's rising, or if you were already over it when it came up; or dive to pass under. They arrive at level 4 in ARCADE (more as you go) and at Mooselookmeguntic in LAKES (more each day and each lake).
+- **A wandering chick.** From level 5 in ARCADE and Mooselookmeguntic's Day 1 - Day in LAKES, the chick paddles around near its spot, peeping, instead of waiting in one place. Later on it roams further.
+
+### Changed
+- **Less healing.** The level-clear heal is now nothing for one star, +1 HP for two and +2 for a perfect three.
+- Reaching the chick is now checked by how close the two loons are, so it works just the same when the chick is on the move.
+
 ## [1.9.1] - 2026-09-30
 
 ### Changed

@@ -17,9 +17,10 @@ There are two ways to play, picked from the start menu:
 - **ARCADE:** one endless run of random mazes, with your HP carrying from level to level, for the high score table.
 
 - **Find the chick.** Mazes get bigger and more tangled as you go, with more forks and dead ends. Big mazes scroll as you swim.
-- **Mind the reeds.** Swimming hard into a reed wall costs HP. Gentle bumps are free. In ARCADE your HP carries from level to level (and in LAKES through each day), and every reunion heals a little: 1 HP for one star, 2 for two, 4 for a perfect three. Run out, and the eagle swoops in.
+- **Mind the reeds.** Swimming hard into a reed wall costs HP. Gentle bumps are free. In ARCADE your HP carries from level to level (and in LAKES through each day), and a reunion heals a little if you played well: 1 HP for two stars, 2 for a perfect three (nothing for one). Run out, and the eagle swoops in.
 - **Dive under the reeds.** From Rangeley (or level 6 in ARCADE) the loon can dive and swim under the reed walls, after a short lesson. You get one dive per level at first, and more later (one more per lake, or at levels 11, 16 and 21 in ARCADE). Each dive is a single short breath, and running out under the reeds costs HP.
 - **Swim like a loon.** The loon speeds up, glides when you let go, curves through turns, bounces off the reeds and drifts with the current.
+- **Watch for turtles.** Snapping turtles patrol some channels. Touch one and it bites (3 HP). The ones blocking your way sink every few seconds, so time your pass, or dive under. Later on, your chick won't sit still either.
 - **Read the walls.** Rocks can't be dived under, beaver dams are slow to dive through, and floating logs are quick. Lily pad mats slow you down on the surface.
 - **Catch fish.** From level 2, fish dart around the maze. Catch them for points, and golden ones heal. Later, big air bubbles hidden in dead ends give an extra dive.
 - **Score big.** Each level earns 1000 points × how far in it is, plus a speed bonus for finishing fast, and up to three stars. The top 10 scores go on the high score table with your initials, arcade style. If the game is hosted with its score server, that's a **world** table shared by everyone who plays there; otherwise it's kept on your device.

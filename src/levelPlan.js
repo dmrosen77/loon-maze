@@ -23,6 +23,10 @@ import {
   DIVE_UNLOCK_LEVEL,
   DIVE_TIERS,
   FEATURE_LEVELS,
+  TURTLE_MAX,
+  TURTLE_EVERY_LEVELS,
+  CHICK_WANDER_GROWTH,
+  CHICK_WANDER_MAX,
   TIME_OF_DAY,
   fishForLevel,
   mazeStage,
@@ -72,6 +76,14 @@ function arcadePlan(level) {
   if (level > 1 && mazeStage(level) !== mazeStage(level - 1)) callouts.push('BIGGER LAKE!');
   if (level === FEATURE_LEVELS.fish) callouts.push('CATCH FISH FOR POINTS!');
   if (level === FEATURE_LEVELS.diveBubbles) callouts.push('BUBBLES GIVE EXTRA DIVES!');
+  if (level === FEATURE_LEVELS.turtles) callouts.push('WATCH OUT FOR TURTLES!');
+  if (level === FEATURE_LEVELS.chickWander) callouts.push('YOUR CHICK IS EXPLORING!');
+  const turtles =
+    level >= FEATURE_LEVELS.turtles ? Math.min(TURTLE_MAX, 1 + Math.floor((level - FEATURE_LEVELS.turtles) / TURTLE_EVERY_LEVELS)) : 0;
+  const chickWander =
+    level >= FEATURE_LEVELS.chickWander
+      ? Math.min(CHICK_WANDER_MAX, 1 + Math.floor((level - FEATURE_LEVELS.chickWander) / CHICK_WANDER_GROWTH))
+      : 0;
 
   return {
     mode: 'arcade',
@@ -85,6 +97,8 @@ function arcadePlan(level) {
     dives: canDive ? tier.dives : 0,
     bubbles: canDive && level >= FEATURE_LEVELS.diveBubbles,
     fishCount: fishForLevel(level),
+    turtles,
+    chickWander,
     levelPoints: LEVEL_POINTS * level,
     label: `Level ${level}`,
     bannerTitle: `Level ${level}`,
@@ -121,6 +135,13 @@ function lakePlan(lake, number) {
   if (number === 1 && lake >= 2) callouts.push('EXTRA DIVE!');
   if (lake === 0 && number === 2) callouts.push('CATCH FISH FOR POINTS!');
   if (lake === 1 && number === 2) callouts.push('BUBBLES GIVE EXTRA DIVES!');
+  // Turtles: one on the first turtle lake's Day 1, one more each day, and two
+  // more for each lake after that.
+  const firstTurtleLake = LAKE_FEATURES.findIndex((f) => f.turtles);
+  const turtles = features.turtles ? Math.min(TURTLE_MAX, 1 + info.day + 2 * (lake - firstTurtleLake)) : 0;
+  if (features.turtles && lake === firstTurtleLake && number === 1) callouts.push('WATCH OUT FOR TURTLES!');
+  const firstWanderLake = LAKE_FEATURES.findIndex((f) => f.chickWander > 0);
+  if (lake === firstWanderLake && number === 2) callouts.push('YOUR CHICK IS EXPLORING!');
 
   return {
     mode: 'lakes',
@@ -137,6 +158,10 @@ function lakePlan(lake, number) {
     dives: features.dives,
     bubbles: features.bubbles,
     fishCount: lake === 0 && number === 1 ? 0 : Math.min(3 + d, 14),
+    turtles,
+    // The chick starts wandering from the lake's second level (Day 1 - Day),
+    // so its first level there is the usual sitting chick.
+    chickWander: lake === firstWanderLake && number === 1 ? 0 : features.chickWander,
     levelPoints: LEVEL_POINTS * (d + 1),
     label: `${info.name}  ${info.dayLabel}`,
     bannerTitle: info.name,
@@ -158,6 +183,8 @@ function lessonPlan() {
     dives: Infinity,
     bubbles: false,
     fishCount: 0,
+    turtles: 0,
+    chickWander: 0,
     levelPoints: 0,
     label: 'Dive lesson',
     bannerTitle: 'DIVE LESSON',

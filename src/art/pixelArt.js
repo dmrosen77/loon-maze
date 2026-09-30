@@ -201,6 +201,50 @@ export const COIN = {
   ],
 };
 
+// A snapping turtle seen from above, facing right, in two paddling frames
+// (legs out, legs back). Its shell has a ridged pattern; its head pokes out
+// in front and the tail behind.
+const TURTLE_PALETTE = {
+  K: '#1b2412', // outline
+  S: '#3f5229', // shell
+  s: '#5b7338', // shell plates
+  l: '#86a052', // plate ridges
+  k: '#77773c', // skin
+  e: '#101010', // eye
+};
+export const TURTLE_LEGS_OUT = {
+  palette: TURTLE_PALETTE,
+  rows: [
+    '..kk.......kk...',
+    '...kKKKKKKKk....',
+    '..KsSsSSsSsSK...',
+    '.KsSlsSlsSlsSK..',
+    'kKSlsSlsSlsSSKkk',
+    'kKSsSlsSlsSsSKkek',
+    'kKSlsSlsSlsSSKkk',
+    '.KsSlsSlsSlsSK..',
+    '..KsSsSSsSsSK...',
+    '...kKKKKKKKk....',
+    '..kk.......kk...',
+  ],
+};
+export const TURTLE_LEGS_BACK = {
+  palette: TURTLE_PALETTE,
+  rows: [
+    '.kk.........kk..',
+    '...kKKKKKKKk....',
+    '..KsSsSSsSsSK...',
+    '.KsSlsSlsSlsSK..',
+    'kKSlsSlsSlsSSKkk',
+    'kKSsSlsSlsSsSKkek',
+    'kKSlsSlsSlsSSKkk',
+    '.KsSlsSlsSlsSK..',
+    '..KsSsSSsSsSK...',
+    '...kKKKKKKKk....',
+    '.kk.........kk..',
+  ],
+};
+
 // Easter egg sprites for cheeky initials (src/game/easterEggs.js): a peach,
 // a smiling poop, a wavy green stink line and a yellow drip.
 export const PEACH = {

@@ -506,6 +506,31 @@ class LakeAudio {
     }
   }
 
+  // A snapping turtle's bite: a hard click and a low crunch.
+  snap() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    this.splash(4000, 1500, 0.05, 0.5);
+    this.chipNote('square', 220, t, 0.06, 0.12, this.sfxBus);
+    this.chipNote('square', 110, t + 0.04, 0.12, 0.12, this.sfxBus);
+  }
+
+  // The wandering chick's soft peep: a quick rising chirp.
+  peep() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.frequency.setValueAtTime(1900, t);
+    osc.frequency.exponentialRampToValueAtTime(2700, t + 0.08);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.05, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.12);
+    osc.connect(gain).connect(this.sfxBus);
+    osc.start(t);
+    osc.stop(t + 0.13);
+  }
+
   // ----- Easter egg sounds (src/game/easterEggs.js).
 
   // A juicy squish and a bouncy boing.

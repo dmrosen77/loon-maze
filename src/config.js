@@ -110,7 +110,7 @@ export const LOON_TURN_SPEED = 12;
 // each reunion heals by the level's stars: REUNION_HEAL_BY_STARS[stars].
 export const LOON_MAX_HP = 50;
 export const HIT_DAMAGE = 1;
-export const REUNION_HEAL_BY_STARS = [0, 1, 2, 4];
+export const REUNION_HEAL_BY_STARS = [0, 0, 1, 2];
 export const LOON_INVULNERABLE_MS = 1500;
 // Restarting a level from the pause menu costs this much HP (never refills
 // it), so it isn't a free way out of a bad attempt. Free in the dive lesson.
@@ -179,6 +179,16 @@ export const TURTLE_KNOCKBACK = 240;
 export const TURTLE_START_CLEAR = 4;
 export const TURTLE_MAX = 6;
 export const TURTLE_EVERY_LEVELS = 3;
+// Turtles on the route to the chick (the only way through, since corridors
+// are one tile wide) don't stay up: they spend TURTLE_UP_MS on the surface,
+// sink over TURTLE_SINK_MS, stay under for TURTLE_DOWN_MS (harmless; swim
+// right over them), and bubble harder for TURTLE_WARN_MS before coming back
+// up. That way a turtle can always be passed without a hit, even before
+// diving unlocks. Turtles in side channels stay up.
+export const TURTLE_UP_MS = 2600;
+export const TURTLE_DOWN_MS = 2000;
+export const TURTLE_SINK_MS = 350;
+export const TURTLE_WARN_MS = 600;
 
 // The wandering chick paddles to a neighboring tile every
 // CHICK_WANDER_PAUSE_MS (a random time in that range), staying within its

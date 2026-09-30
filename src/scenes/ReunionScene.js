@@ -447,6 +447,9 @@ export default class ReunionScene extends Phaser.Scene {
     this.hpBar.setValue(this.healedHp);
     if (gained > 0) this.audio?.heal();
 
+    // "+n HP", or "HP FULL" if already full; nothing when the stars earned no heal.
+    const full = this.hp >= LOON_MAX_HP;
+    if (gained <= 0 && !full) return;
     const popup = this.add
       .text(this.hpBar.right + 16, 490, gained > 0 ? `+${gained} HP` : 'HP FULL', {
         ...TEXT_STYLE,
