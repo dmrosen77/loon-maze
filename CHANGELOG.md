@@ -6,6 +6,9 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Changed
+- **The level-clear heal depends on your stars.** Instead of +5 HP every time, a reunion heals +1 HP for one star, +2 for two and +4 for a perfect three, so clean runs keep you healthy and sloppy ones wear you down.
+
 ## [1.9.0] - 2026-09-30
 
 ### Added

@@ -5,7 +5,7 @@ import {
   WATER_DRIFT,
   REUNION_MS,
   LOON_MAX_HP,
-  REUNION_HEAL,
+  REUNION_HEAL_BY_STARS,
   FONT_FAMILY,
   TITLE_COLORS,
   DIVE_UNLOCK_LEVEL,
@@ -63,13 +63,14 @@ export default class ReunionScene extends Phaser.Scene {
   create(data) {
     this.level = data.level;
     this.hp = data.hp ?? LOON_MAX_HP;
-    this.healedHp = Math.min(LOON_MAX_HP, this.hp + REUNION_HEAL);
     // The score already includes this level's points; they're shown separately.
     this.score = data.score ?? 0;
     this.levelPoints = data.levelPoints ?? 0;
     this.speedBonus = data.speedBonus ?? 0;
     this.fishPoints = data.fishPoints ?? 0;
     this.stars = data.stars ?? 1;
+    // Cleaner runs heal more: see REUNION_HEAL_BY_STARS.
+    this.healedHp = Math.min(LOON_MAX_HP, this.hp + REUNION_HEAL_BY_STARS[this.stars]);
     this.starImages = [];
     // LAKES mode: it also says whether this was a new best, and then carries
     // on to the day's next level (with HP), or back to the lake map after Night.
@@ -440,7 +441,7 @@ export default class ReunionScene extends Phaser.Scene {
     this.audio?.coin();
   }
 
-  // The HP bar grows back, with a "+5 HP" floating up beside it.
+  // The HP bar grows back by the stars' heal, with "+n HP" floating up beside it.
   heal() {
     const gained = this.healedHp - this.hp;
     this.hpBar.setValue(this.healedHp);

@@ -106,10 +106,11 @@ export const LOON_STROKE_MS = 380;
 export const LOON_TURN_SPEED = 12;
 // Hit points. Each swim into the reeds costs HIT_DAMAGE, and 0 is game over.
 // After a hit the loon can't be hurt again for LOON_INVULNERABLE_MS (it
-// blinks). HP carries over between levels; each reunion heals REUNION_HEAL.
+// blinks). HP carries over between levels (ARCADE, and within a LAKES day);
+// each reunion heals by the level's stars: REUNION_HEAL_BY_STARS[stars].
 export const LOON_MAX_HP = 50;
 export const HIT_DAMAGE = 1;
-export const REUNION_HEAL = 5;
+export const REUNION_HEAL_BY_STARS = [0, 1, 2, 4];
 export const LOON_INVULNERABLE_MS = 1500;
 // Restarting a level from the pause menu costs this much HP (never refills
 // it), so it isn't a free way out of a bad attempt. Free in the dive lesson.
