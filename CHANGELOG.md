@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.9.1] - 2026-09-30
+
 ### Changed
 - **The level-clear heal depends on your stars.** Instead of +5 HP every time, a reunion heals +1 HP for one star, +2 for two and +4 for a perfect three, so clean runs keep you healthy and sloppy ones wear you down.
 
@@ -132,7 +134,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.9.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.9.1...HEAD
+[1.9.1]: https://github.com/dmrosen77/loon-maze/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/dmrosen77/loon-maze/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/dmrosen77/loon-maze/compare/v1.7.0...v1.8.0
 [1.7.0]: https://github.com/dmrosen77/loon-maze/compare/v1.6.0...v1.7.0
