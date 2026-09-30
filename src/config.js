@@ -41,6 +41,16 @@ export function mazeStage(level) {
 export const LAKE_BRANCHING_PER_STEP = 0.04;
 export const LAKE_UNLOCK_STARS = 32;
 export const LAKE_LAST_STEP = 11;
+// Diving levels in LAKES are checked so a dive can't make them trivial: the
+// chick has to be at least LAKE_MIN_CROW_SHARE of the maze's width plus
+// height from the start (along the grid), and the level's dives can't cut the
+// swimming route below LAKE_MIN_DIVE_SHARE[dives] of it. A seed that fails
+// is replaced by the next one ("<seed>-1", "-2", ...), so levels that pass
+// keep their maze.
+export const LAKE_MIN_CROW_SHARE = 0.35;
+export const LAKE_MIN_DIVE_SHARE = { 1: 0.5, 2: 0.4, 3: 0.35, 4: 0.3 };
+export const LAKE_MAZE_TRIES = 60;
+
 // What each lake adds, in LAKES order: dives per level (0 = no diving yet),
 // and whether extra-dive bubbles can appear. Diving starts at the second lake,
 // after the dive lesson.

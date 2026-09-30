@@ -16,6 +16,9 @@ import {
   LAKE_BRANCHING_PER_STEP,
   LAKE_LAST_STEP,
   LAKE_FEATURES,
+  LAKE_MIN_CROW_SHARE,
+  LAKE_MIN_DIVE_SHARE,
+  LAKE_MAZE_TRIES,
   LEVEL_POINTS,
   DIVE_UNLOCK_LEVEL,
   DIVE_TIERS,
@@ -28,6 +31,7 @@ import generateMaze from './mazes/generateMaze.js';
 import handMadeMaze from './mazes/maze1.js';
 import diveLessonLayout from './mazes/diveLesson.js';
 import { plainMaze } from './mazes/terrain.js';
+import { isGoodDivingMaze } from './mazes/mazeQuality.js';
 import { timeOfDayForLevel } from './game/Lighting.js';
 import { lakeLevel } from './lakes.js';
 
@@ -77,14 +81,25 @@ function arcadePlan(level) {
 function lakePlan(lake, number) {
   const info = lakeLevel(lake, number);
   const { d } = info;
-  // The same seed every time, so the level is the same every time.
-  const rng = new Phaser.Math.RandomDataGenerator([info.seed]);
-  const random = () => rng.frac();
   const rows = Math.min(LEVEL_1_ROWS + 2 * d, MAX_ROWS);
   const colSteps = Math.round((d * (MAX_COLS - LEVEL_1_COLS)) / 2 / LAKE_LAST_STEP);
   const cols = Math.min(LEVEL_1_COLS + 2 * colSteps, MAX_COLS);
   const branching = Math.min(BRANCHING_START + LAKE_BRANCHING_PER_STEP * d, BRANCHING_MAX);
   const features = LAKE_FEATURES[lake];
+
+  // The same seed every time, so the level is the same every time. On diving
+  // lakes, a seed whose maze a dive would make trivial is swapped for the
+  // next one. The rest of the level (terrain, fish, bubble) carries on from
+  // the chosen seed's random numbers.
+  let random;
+  let maze;
+  for (let attempt = 0; attempt < LAKE_MAZE_TRIES; attempt++) {
+    const rng = new Phaser.Math.RandomDataGenerator([attempt === 0 ? info.seed : `${info.seed}-${attempt}`]);
+    random = () => rng.frac();
+    maze = generateMaze(cols, rows, branching, random);
+    const quality = { minCrowShare: LAKE_MIN_CROW_SHARE, minDiveShare: LAKE_MIN_DIVE_SHARE[features.dives] };
+    if (features.dives === 0 || isGoodDivingMaze(maze, features.dives, quality)) break;
+  }
 
   const callouts = [];
   if (number === 1) callouts.push(`WELCOME TO ${info.name.toUpperCase()}!`);
@@ -99,7 +114,7 @@ function lakePlan(lake, number) {
     number,
     key: info.key,
     level: number,
-    maze: generateMaze(cols, rows, branching, random),
+    maze,
     layout: null,
     random,
     phase: TIME_OF_DAY[info.time],

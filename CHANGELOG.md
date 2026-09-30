@@ -6,6 +6,12 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Fixed
+- **Too-easy diving levels.** Some LAKES levels put the chick just a wall or two from the start, so one dive finished them (Rangeley's Day 1 - Day was the worst). Diving levels are now checked: the chick has to be a fair way across the lake, and your dives can't cut the route to less than half of it (less with more dives). 29 of the 64 diving levels got new mazes. Levels that were fine, and all of Cobbosseecontee, are unchanged.
+
+### Added
+- **Gamepad support.** Play with a controller: the left stick or d-pad swims (tilt further to paddle harder), hold A to dive, and the d-pad, A and B work the menus, lake map and high score initials. Start quits a LAKES level to the map, and Select mutes. Any button inserts the coin. Works with Xbox, PlayStation, Switch Pro and most other controllers.
+
 ## [1.6.0] - 2026-09-30
 
 ### Added
