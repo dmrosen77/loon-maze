@@ -7,8 +7,8 @@ import { ROCK_CHANCE, DAM_CHANCE, LOG_CHANCE, MAT_CHANCE } from '../config.js';
 // logs only go on thin walls between two corridors (where a dive is a
 // short-cut), lying along the wall. The outer ring stays reeds, and the
 // start and chick never get a mat. A hand-made layout's letters (see
-// parseLayout) are used instead of random picks.
-export default function assignTerrain(info, { layout = null } = {}) {
+// parseLayout) are used instead of random picks. `random` can be seeded.
+export default function assignTerrain(info, { layout = null, random = Math.random } = {}) {
   const walls = new Map(); // "col,row" -> { kind, across }
   const mats = new Set();
   const key = (col, row) => `${col},${row}`;
@@ -33,7 +33,7 @@ export default function assignTerrain(info, { layout = null } = {}) {
         const lyingAcross = wall(col - 1, row) && wall(col + 1, row) && !wall(col, row - 1) && !wall(col, row + 1);
         const standingUp = wall(col, row - 1) && wall(col, row + 1) && !wall(col - 1, row) && !wall(col + 1, row);
         const thin = lyingAcross || standingUp;
-        const roll = Math.random();
+        const roll = random();
         let kind = null;
         if (roll < ROCK_CHANCE) kind = 'rock';
         else if (thin && roll < ROCK_CHANCE + DAM_CHANCE) kind = 'dam';
@@ -43,7 +43,7 @@ export default function assignTerrain(info, { layout = null } = {}) {
     }
     for (const { col, row } of info.open) {
       const special = info.distanceFromStart(col, row) < 2 || (col === info.baby.col && row === info.baby.row);
-      if (!special && Math.random() < MAT_CHANCE) mats.add(key(col, row));
+      if (!special && random() < MAT_CHANCE) mats.add(key(col, row));
     }
   }
 

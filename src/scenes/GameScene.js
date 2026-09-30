@@ -1,13 +1,6 @@
 import * as Phaser from 'phaser';
 import {
   TILE_SIZE,
-  PROCEDURAL_MAZE,
-  LEVEL_1_COLS,
-  LEVEL_1_ROWS,
-  GROWTH_PER_LEVEL,
-  MAX_COLS,
-  MAX_ROWS,
-  LEVEL_POINTS,
   SPEED_BONUS_MAX,
   SPEED_BONUS_LOSS,
   LOON_SPEED,
@@ -30,29 +23,26 @@ import {
   WATER_DRIFT,
   WAKE_INTERVAL_MS,
   WAKE_SPLASH,
-  DIVE_UNLOCK_LEVEL,
   DIVE_SPEED_FACTOR,
-  DIVE_TIERS,
   AIR_PER_DIVE_MS,
   AIR_REFILL,
   AIR_OUT_DAMAGE,
   DIVE_SHADOW_TINT,
   DIVE_SHADOW_ALPHA,
   DIVE_BUBBLE_MS,
-  FEATURE_LEVELS,
   DAM_DIVE_SPEED_FACTOR,
   LOG_AIR_FACTOR,
   MAT_SPEED_FACTOR,
   FISH_POINTS,
-  fishForLevel,
   GOLDEN_FISH_HEAL,
   PAR_SECONDS_BASE,
   PAR_SECONDS_PER_TILE,
   FONT_FAMILY,
 } from '../config.js';
-import handMadeMaze from '../mazes/maze1.js';
-import diveLessonLayout, { LESSON_HINTS } from '../mazes/diveLesson.js';
-import generateMaze from '../mazes/generateMaze.js';
+import { LESSON_HINTS } from '../mazes/diveLesson.js';
+import levelPlan from '../levelPlan.js';
+import { recordLevel, isLakeUnlocked, markLessonDone, setLastPlayed } from '../progress.js';
+import { LAKES } from '../lakes.js';
 import {
   LOON_TOP_FEET_OUT,
   LOON_TOP_FEET_IN,
@@ -71,8 +61,8 @@ import {
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
 import mazeInfo, { tileAt } from '../mazes/mazeInfo.js';
-import assignTerrain, { plainMaze } from '../mazes/terrain.js';
-import Lighting, { timeOfDayForLevel } from '../game/Lighting.js';
+import assignTerrain from '../mazes/terrain.js';
+import Lighting from '../game/Lighting.js';
 import Decor from '../game/Decor.js';
 import Fish from '../game/Fish.js';
 import Pickups from '../game/Pickups.js';
@@ -122,37 +112,26 @@ const DEPTH = {
   hud: 10,
 };
 
-// The dive tier for a level: the last one it has reached (the first one for
-// the lesson and any level before diving).
-function diveTierForLevel(level) {
-  return DIVE_TIERS.filter((tier) => tier.level <= level).at(-1) ?? DIVE_TIERS[0];
-}
-
-// Each level's maze is a little bigger than the last, up to the max size.
-function mazeForLevel(level) {
-  if (!PROCEDURAL_MAZE) return handMadeMaze;
-  const growth = GROWTH_PER_LEVEL * (level - 1);
-  return generateMaze(
-    Math.min(LEVEL_1_COLS + growth, MAX_COLS),
-    Math.min(LEVEL_1_ROWS + growth, MAX_ROWS),
-  );
-}
-
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
   }
 
-  // Started with { level, hp, score, lesson }. HP and score carry over from
-  // the last level (via the reunion cutscene); a new game starts at level 1
-  // with full HP and no score. `lesson` plays the dive lesson, which then
-  // starts `level` for real.
-  create(data) {
-    this.level = data?.level ?? 1;
-    this.lesson = Boolean(data?.lesson);
-    this.canDive = this.lesson || this.level >= DIVE_UNLOCK_LEVEL;
-    this.diveTier = diveTierForLevel(this.level);
-    this.divesLeft = this.lesson ? Infinity : this.diveTier.dives;
+  // Started with one of (see levelPlan.js):
+  // - { mode: 'arcade', level, hp, score }: HP and score carry over from the
+  //   last level (via the reunion cutscene); a new game is level 1 with full
+  //   HP and no score.
+  // - { mode: 'lakes', lake, number }: one lake level, full HP, no score.
+  // - { lesson: true, then, hp, score }: the dive lesson, which then starts
+  //   `then` (another GameScene start), or goes back to the lake map if none.
+  create(data = {}) {
+    this.startData = data;
+    this.plan = levelPlan(data);
+    this.mode = this.plan.mode;
+    this.level = this.plan.level;
+    this.lesson = this.plan.lesson;
+    this.canDive = this.plan.canDive;
+    this.divesLeft = this.plan.dives;
     this.air = AIR_PER_DIVE_MS; // The current breath.
     this.diving = false;
     this.wantedDive = false; // Whether dive was held last frame, to catch new presses.
@@ -160,8 +139,10 @@ export default class GameScene extends Phaser.Scene {
     this.airBar = null; // Only made on levels with diving.
     this.reunited = false;
     this.gameOver = false;
-    this.hp = data?.hp ?? LOON_MAX_HP;
-    this.score = data?.score ?? 0;
+    this.leaving = false;
+    this.hp = this.mode === 'lakes' ? LOON_MAX_HP : (data.hp ?? LOON_MAX_HP);
+    this.score = this.mode === 'lakes' ? 0 : (data.score ?? 0);
+    if (this.mode === 'lakes') setLastPlayed(this.plan.lake, this.plan.number);
     this.invulnerableUntil = 0;
     this.hitsThisLevel = 0; // For the no-hit star.
     this.fishPoints = 0; // Points from fish this level, shown on the reunion screen.
@@ -175,12 +156,12 @@ export default class GameScene extends Phaser.Scene {
     // from when the scene last ran until then.
     this.levelStartTime = null;
 
-    const maze = this.lesson ? plainMaze(diveLessonLayout) : mazeForLevel(this.level);
+    const { maze } = this.plan;
     this.maze = maze; // Kept for corner assist and diving, which need to know where the walls are.
     this.info = mazeInfo(maze); // Open tiles, the path to the chick and so on, for placing things.
-    // Rocks, beaver dams, logs and lily pad mats: random, or laid out by hand
-    // in the dive lesson.
-    this.terrain = assignTerrain(this.info, { layout: this.lesson ? diveLessonLayout : null });
+    // Rocks, beaver dams, logs and lily pad mats: picked with the plan's
+    // random (seeded in LAKES mode), or laid out by hand in the dive lesson.
+    this.terrain = assignTerrain(this.info, { layout: this.plan.layout, random: this.plan.random });
     const mazeWidth = maze[0].length * TILE_SIZE;
     const mazeHeight = maze.length * TILE_SIZE;
 
@@ -198,7 +179,7 @@ export default class GameScene extends Phaser.Scene {
       lakeHeight,
     );
     // Some times of day recolor the water itself.
-    const { name, water } = timeOfDayForLevel(this.level);
+    const { name, water } = this.plan.phase;
     const waterKey = water ? `water-${name}` : 'water';
     if (water) makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE, { key: waterKey, palette: water });
     this.water = this.add.tileSprite(lake.x, lake.y, lake.width, lake.height, waterKey).setOrigin(0).setDepth(DEPTH.water);
@@ -268,16 +249,20 @@ export default class GameScene extends Phaser.Scene {
         this.audio?.ribbit();
       },
     });
-    this.lighting = new Lighting(this, this.info, { tintDepth: DEPTH.tint, glowDepth: DEPTH.glow });
+    this.lighting = new Lighting(this, this.info, { phase: this.plan.phase, tintDepth: DEPTH.tint, glowDepth: DEPTH.glow });
     // Fish and the extra-dive bubble; the dive lesson has neither.
     this.fish = new Fish(this, this.info, {
-      count: this.lesson ? 0 : fishForLevel(this.level),
+      count: this.plan.fishCount,
       depth: DEPTH.fish,
+      random: this.plan.random,
       onCatch: (x, y, golden) => this.catchFish(x, y, golden),
     });
-    const bubbleLevel = this.canDive && !this.lesson && this.level >= FEATURE_LEVELS.diveBubbles;
-    this.pickups = bubbleLevel
-      ? new Pickups(this, this.info, { depth: DEPTH.pads + 0.2, onGrab: (x, y) => this.grabDiveBubble(x, y) })
+    this.pickups = this.plan.bubbles
+      ? new Pickups(this, this.info, {
+          depth: DEPTH.pads + 0.2,
+          random: this.plan.random,
+          onGrab: (x, y) => this.grabDiveBubble(x, y),
+        })
       : null;
     this.showLevelText();
 
@@ -286,7 +271,46 @@ export default class GameScene extends Phaser.Scene {
     this.diveKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.SPACE);
     this.stick = new TouchStick(this);
     this.diveButton = this.canDive ? addDiveButton(this) : { held: false };
-    addMuteButton(this, this.audio, this.scale.width - 12, 34);
+    const muteButton = addMuteButton(this, this.audio, this.scale.width - 12, 34);
+    // In LAKES mode (and a lesson from the map), Esc or the MAP button quits to the map.
+    if (this.leadsToMap()) {
+      this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ESC).on('down', () => this.quitToMap());
+      if (muteButton) this.addMapButton(muteButton);
+    }
+  }
+
+  // Whether this level ends (or quits) on the lake map rather than in the arcade run.
+  leadsToMap() {
+    return this.mode === 'lakes' || (this.lesson && this.startData.then?.mode !== 'arcade');
+  }
+
+  // A small "MAP" button beside SOUND on touch screens.
+  addMapButton(muteButton) {
+    const button = this.add
+      .text(muteButton.x - muteButton.width - 8, muteButton.y, 'MAP', {
+        fontFamily: `"${FONT_FAMILY}"`,
+        fontSize: '12px',
+        color: '#ffffff',
+        stroke: '#000000',
+        strokeThickness: 4,
+        backgroundColor: 'rgba(0, 0, 0, 0.35)',
+        padding: { x: 8, y: 6 },
+      })
+      .setOrigin(1, 0)
+      .setScrollFactor(0)
+      .setDepth(DEPTH.hud)
+      .setInteractive({ useHandCursor: true });
+    button.on('pointerdown', () => this.quitToMap());
+  }
+
+  quitToMap() {
+    if (this.reunited || this.gameOver || this.leaving) return;
+    this.leaving = true;
+    this.cameras.main.fadeOut(400, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      const lake = this.plan.lake ?? this.startData.then?.lake ?? 1;
+      this.scene.start('LakeMapScene', { view: 'lake', lake, select: this.plan.number ?? 1 });
+    });
   }
 
   // Textures and the paddling animation are global, so they're only made once.
@@ -420,9 +444,8 @@ export default class GameScene extends Phaser.Scene {
 
   // A corner label, plus a big banner that fades out at the start of the level.
   showLevelText() {
-    const title = this.lesson ? 'Dive lesson' : `Level ${this.level}`;
     this.add
-      .text(12, 8, title, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
+      .text(12, 8, this.plan.label, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setScrollFactor(0)
       .setDepth(DEPTH.hud);
     this.hpBar = new HpBar(this, 12, 40, { width: 160, height: 12, max: LOON_MAX_HP, value: this.hp });
@@ -431,7 +454,7 @@ export default class GameScene extends Phaser.Scene {
         width: 80,
         height: 12,
         max: AIR_PER_DIVE_MS,
-        dives: this.lesson ? null : this.diveTier.dives,
+        dives: this.lesson ? null : this.plan.dives,
       });
     }
     if (this.lesson) this.showLessonHints();
@@ -443,12 +466,12 @@ export default class GameScene extends Phaser.Scene {
 
     const { width, height } = this.scale;
     const banner = this.add
-      .text(width / 2, height / 2, this.lesson ? 'DIVE LESSON' : `Level ${this.level}`, { ...TEXT_STYLE, fontSize: '48px' })
+      .text(width / 2, height / 2, this.plan.bannerTitle, { ...TEXT_STYLE, fontSize: this.mode === 'lakes' ? '36px' : '48px' })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH.hud);
     const timeOfDay = this.add
-      .text(width / 2, height / 2 + 42, this.lighting.phase.name, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
+      .text(width / 2, height / 2 + 42, this.plan.bannerSubtitle, { ...TEXT_STYLE, fontSize: '16px', strokeThickness: 4 })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH.hud);
@@ -464,13 +487,7 @@ export default class GameScene extends Phaser.Scene {
     });
 
     // News for this level, under the banner.
-    const callouts = [];
-    if (!this.lesson && this.diveTier !== DIVE_TIERS[0] && this.diveTier.level === this.level) {
-      callouts.push('EXTRA DIVE!'); // An extra dive per level starts here (after the first tier).
-    }
-    if (!this.lesson && this.level === FEATURE_LEVELS.fish) callouts.push('CATCH FISH FOR POINTS!');
-    if (!this.lesson && this.level === FEATURE_LEVELS.diveBubbles) callouts.push('BUBBLES GIVE EXTRA DIVES!');
-    this.showCallouts(callouts);
+    this.showCallouts(this.plan.callouts);
   }
 
   // Points during a level, shown in the corner right away.
@@ -566,7 +583,7 @@ export default class GameScene extends Phaser.Scene {
     if (now - this.lastBumpTime > 200 && this.impactSpeed >= LOON_HIT_MIN_SPEED) {
       this.audio?.bump();
       ripple(this, this.loon.x, this.loon.y, { depth: DEPTH.ripples, radius: 16 });
-      this.takeDamage(now);
+      if (!this.lesson) this.takeDamage(now); // The dive lesson is for practice: no damage.
     }
     this.lastBumpTime = now;
   }
@@ -615,7 +632,13 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(500, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('GameOverScene', { level: this.level, score: this.score });
+        this.scene.start('GameOverScene', {
+          level: this.level,
+          score: this.score,
+          mode: this.leadsToMap() ? 'lakes' : 'arcade',
+          lake: this.plan.lake ?? this.startData.then?.lake ?? 1,
+          number: this.plan.number ?? 1,
+        });
       });
     });
   }
@@ -630,7 +653,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Level points, plus a bonus for finishing quickly.
     const seconds = (this.time.now - this.levelStartTime) / 1000;
-    const levelPoints = LEVEL_POINTS * this.level;
+    const { levelPoints } = this.plan;
     const speedBonus = Math.max(0, Math.round(SPEED_BONUS_MAX - seconds * SPEED_BONUS_LOSS));
     // Stars: one for finishing, two for beating par, three for doing it without a hit.
     const par = PAR_SECONDS_BASE + this.info.pathLength * PAR_SECONDS_PER_TILE;
@@ -645,21 +668,42 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(400, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('ReunionScene', {
+        const total = this.score + levelPoints + speedBonus;
+        const reunion = {
+          mode: this.mode,
           level: this.level,
           hp: this.hp,
-          score: this.score + levelPoints + speedBonus,
+          score: total,
           levelPoints,
           speedBonus,
           fishPoints: this.fishPoints,
           stars,
-        });
+        };
+        if (this.mode === 'lakes') {
+          // Save the result, and notice if it just opened the next lake.
+          const { lake, number } = this.plan;
+          const nextLake = lake + 1 < LAKES.length ? lake + 1 : null;
+          const wasOpen = nextLake !== null && isLakeUnlocked(nextLake);
+          const best = recordLevel(lake, number, { stars, score: total });
+          Object.assign(reunion, {
+            lake,
+            number,
+            title: `${this.plan.bannerTitle.toUpperCase()}`,
+            subtitle: `${this.plan.bannerSubtitle.toUpperCase()} COMPLETE`,
+            newBest: best.newBestScore || best.newBestStars,
+            unlockedLake: nextLake !== null && !wasOpen && isLakeUnlocked(nextLake) ? nextLake : null,
+          });
+        }
+        this.scene.start('ReunionScene', reunion);
       });
     });
   }
 
   // The lesson has no points or cutscene: a cheer, then the real level.
+  // Finishing the lesson marks it done (so it isn't shown again), then starts
+  // the level it came before, or goes back to the lake map (a replay from there).
   finishLesson() {
+    markLessonDone();
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
     this.audio?.heal();
@@ -672,7 +716,9 @@ export default class GameScene extends Phaser.Scene {
     this.time.delayedCall(1600, () => {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('GameScene', { level: this.level, hp: this.hp, score: this.score });
+        const { then } = this.startData;
+        if (then) this.scene.start('GameScene', then);
+        else this.scene.start('LakeMapScene', { view: 'lake', lake: 1 });
       });
     });
   }

@@ -8,13 +8,13 @@ export function timeOfDayForLevel(level) {
   return TIME_OF_DAY[(level - 1) % TIME_OF_DAY.length];
 }
 
-// Colors the whole lake for the level's time of day, with a screen-sized
+// Colors the whole lake for the level's time of day (`phase`, an entry of TIME_OF_DAY), with a screen-sized
 // tint multiplied over everything below the HUD. At night, moonlight glints
 // on the open water in view and fireflies drift over the reeds, drawn above
 // the tint so they glow.
 export default class Lighting {
-  constructor(scene, info, { tintDepth, glowDepth }) {
-    this.phase = timeOfDayForLevel(scene.level);
+  constructor(scene, info, { phase, tintDepth, glowDepth }) {
+    this.phase = phase;
     const { width, height } = scene.scale;
     if (this.phase.tint !== 0xffffff) {
       scene.add

@@ -17,12 +17,22 @@ const STEPS = [
 ];
 const CATCH_DISTANCE = 18;
 
+// A shuffled copy, using the given random function.
+function shuffle(items, random) {
+  const copy = [...items];
+  for (let i = copy.length - 1; i > 0; i--) {
+    const j = Math.floor(random() * (i + 1));
+    [copy[i], copy[j]] = [copy[j], copy[i]];
+  }
+  return copy;
+}
+
 // `count` fish darting around the open water. Each swims from tile to neighboring
 // open tile (so it never crosses the reeds), and bolts away when the loon
 // comes close, but slower than the loon can swim. Swimming into one (on the
 // surface or diving) calls onCatch(x, y, golden).
 export default class Fish {
-  constructor(scene, info, { count, depth, onCatch }) {
+  constructor(scene, info, { count, depth, onCatch, random = Math.random }) {
     this.scene = scene;
     this.info = info;
     this.onCatch = onCatch;
@@ -33,10 +43,12 @@ export default class Fish {
     const spots = info.open.filter(
       ({ col, row }) => info.distanceFromStart(col, row) >= 3 && !(col === info.baby.col && row === info.baby.row),
     );
-    this.fish = Phaser.Utils.Array.Shuffle(spots)
+    // Where they start and which are golden follow `random` (seeded in LAKES
+    // mode); how they swim doesn't need to.
+    this.fish = shuffle(spots, random)
       .slice(0, count)
       .map((tile) => {
-        const golden = Math.random() < GOLDEN_FISH_CHANCE;
+        const golden = random() < GOLDEN_FISH_CHANCE;
         const { x, y } = tileCenter(tile);
         const fish = scene.add.image(x, y, golden ? 'fish-golden' : 'fish').setDepth(depth);
         fish.golden = golden;

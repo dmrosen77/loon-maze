@@ -13,6 +13,7 @@ import { startGlints, addFirefly } from '../art/lakeAmbience.js';
 import { getLakeAudio } from '../audio.js';
 import { isTouchDevice, addMuteButton } from '../ui/touch.js';
 import { version } from '../../package.json';
+import { hasPlayedLakes, continuePoint } from '../progress.js';
 import loonBigUrl from '../assets/loon-big.png';
 import babyLoonBigUrl from '../assets/baby-loon-big.png';
 import reedsClumpUrl from '../assets/reeds-clump.png';
@@ -90,6 +91,8 @@ export default class TitleScene extends Phaser.Scene {
 
     this.enterKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.ENTER);
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
+    this.upKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.UP);
+    this.downKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.DOWN);
     addMuteButton(this, this.audio, this.scale.width - 12, 12);
 
     // A tap works like Enter (the first one inserts the coin), except on a button.
@@ -281,20 +284,22 @@ export default class TitleScene extends Phaser.Scene {
     // Browsers block sound until the first key press, so ask for one first,
     // arcade style: any key "inserts a coin" (and turns the sound on).
     this.waitingForSound = Boolean(this.audio) && !this.audio.started;
-    this.startText = isTouchDevice() ? 'TAP TO START' : 'PRESS ENTER TO START';
     this.prompt = this.add
-      .text(width / 2, 530, this.waitingForSound ? 'INSERT COIN' : this.startText, {
+      .text(width / 2, 530, 'INSERT COIN', {
         ...TEXT_STYLE,
         fontSize: '22px',
       })
       .setOrigin(0.5)
-      .setDepth(DEPTH.text);
+      .setDepth(DEPTH.text)
+      .setVisible(this.waitingForSound);
+    this.menu = null;
+    if (!this.waitingForSound) this.showMenu();
 
     // Classic arcade blink.
     this.time.addEvent({
       delay: 500,
       loop: true,
-      callback: () => this.prompt.setVisible(!this.prompt.visible),
+      callback: () => this.prompt.setVisible(this.waitingForSound && !this.prompt.visible),
     });
 
     this.add
@@ -312,6 +317,54 @@ export default class TitleScene extends Phaser.Scene {
       .setOrigin(1, 1)
       .setAlpha(0.8)
       .setDepth(DEPTH.text);
+  }
+
+  // The start menu, once the coin is in: CONTINUE (after LAKES has been
+  // played), LAKES and ARCADE. Up/down and Enter, or tap one.
+  showMenu() {
+    const { width } = this.scale;
+    const choices = [...(hasPlayedLakes() ? ['CONTINUE'] : []), 'LAKES', 'ARCADE'];
+    const top = 515 - ((choices.length - 1) * 30) / 2;
+    this.menu = choices.map((label, i) => {
+      const item = this.add
+        .text(width / 2, top + i * 30, label, { ...TEXT_STYLE, fontSize: '20px', strokeThickness: 5 })
+        .setOrigin(0.5)
+        .setDepth(DEPTH.text)
+        .setInteractive({ useHandCursor: true });
+      item.on('pointerdown', () => {
+        this.chooseMenu(i);
+        this.start();
+      });
+      item.label = label;
+      return item;
+    });
+    this.chooseMenu(0);
+  }
+
+  chooseMenu(index) {
+    this.menuIndex = Phaser.Math.Wrap(index, 0, this.menu.length);
+    this.menu.forEach((item, i) => {
+      const chosen = i === this.menuIndex;
+      item.setText(chosen ? `> ${item.label} <` : item.label).setColor(chosen ? TITLE_COLORS.title : '#ffffff');
+    });
+  }
+
+  start() {
+    if (this.starting) return;
+    this.starting = true;
+    const choice = this.menu[this.menuIndex].label;
+    this.audio?.startJingle();
+    this.cameras.main.fadeOut(600, 0, 0, 0);
+    this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
+      if (choice === 'CONTINUE') {
+        const { lake, number } = continuePoint();
+        this.scene.start('LakeMapScene', { view: 'lake', lake, select: number });
+      } else if (choice === 'LAKES') {
+        this.scene.start('LakeMapScene', { view: 'lakes' });
+      } else {
+        this.scene.start('GameScene', { mode: 'arcade', level: 1 });
+      }
+    });
   }
 
   update(time, delta) {
@@ -338,18 +391,21 @@ export default class TitleScene extends Phaser.Scene {
       if (this.audio.started) {
         this.waitingForSound = false;
         this.audio.coin();
-        this.prompt.setText(this.startText).setVisible(true);
+        this.prompt.setVisible(false);
+        this.showMenu();
       }
       return;
     }
 
-    if (enterPressed && !this.starting) {
-      this.starting = true;
-      this.audio?.startJingle();
-      this.cameras.main.fadeOut(600, 0, 0, 0);
-      this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('GameScene', { level: 1 });
-      });
+    if (this.starting) return;
+    if (Phaser.Input.Keyboard.JustDown(this.upKey)) {
+      this.chooseMenu(this.menuIndex - 1);
+      this.audio?.blip();
     }
+    if (Phaser.Input.Keyboard.JustDown(this.downKey)) {
+      this.chooseMenu(this.menuIndex + 1);
+      this.audio?.blip();
+    }
+    if (enterPressed) this.start();
   }
 }

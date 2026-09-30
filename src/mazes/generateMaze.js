@@ -1,29 +1,35 @@
 // Builds a random maze in the same character format as the hand-made mazes.
-// Uses a recursive backtracker: carve from the start, knocking down walls to
-// unvisited neighbors, backing up at dead ends. Every open tile is reachable.
-// cols and rows should be odd so the maze has an even border all around.
-export default function generateMaze(cols, rows) {
+// Uses the "growing tree" method: carve from the start, knocking down walls
+// to unvisited neighbors, and keep a list of cells that may still have some.
+// Each step carries on from the newest cell (which makes long, winding
+// corridors) or, with probability `branching`, from a random one on the list
+// (which sprouts a fork there, so more forks and short dead ends). Every open
+// tile is reachable. cols and rows should be odd so the maze has an even
+// border all around. `random` (0 to 1, like Math.random) can be seeded to
+// make the same maze every time.
+export default function generateMaze(cols, rows, branching = 0, random = Math.random) {
   const grid = Array.from({ length: rows }, () => Array(cols).fill('#'));
   const steps = [[2, 0], [-2, 0], [0, 2], [0, -2]];
 
   grid[1][1] = '.';
-  const stack = [{ x: 1, y: 1 }];
+  const active = [{ x: 1, y: 1 }];
 
-  while (stack.length > 0) {
-    const { x, y } = stack[stack.length - 1];
+  while (active.length > 0) {
+    const index = random() < branching ? Math.floor(random() * active.length) : active.length - 1;
+    const { x, y } = active[index];
     const options = steps
       .map(([dx, dy]) => ({ x: x + dx, y: y + dy, dx, dy }))
       .filter((n) => n.x > 0 && n.x < cols - 1 && n.y > 0 && n.y < rows - 1 && grid[n.y][n.x] === '#');
 
     if (options.length === 0) {
-      stack.pop();
+      active.splice(index, 1);
       continue;
     }
 
-    const next = options[Math.floor(Math.random() * options.length)];
+    const next = options[Math.floor(random() * options.length)];
     grid[y + next.dy / 2][x + next.dx / 2] = '.';
     grid[next.y][next.x] = '.';
-    stack.push({ x: next.x, y: next.y });
+    active.push({ x: next.x, y: next.y });
   }
 
   // Put the baby on the tile with the longest swim from the start.

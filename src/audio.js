@@ -456,6 +456,56 @@ class LakeAudio {
     this.chipNote('square', 1175, t + 0.03, 0.08, 0.08, this.sfxBus);
   }
 
+  // A deep boom for a big moment: a sine kick diving in pitch, under a burst of low noise.
+  boom() {
+    if (!this.started) return;
+    const { ctx } = this;
+    const t = ctx.currentTime;
+    const osc = ctx.createOscillator();
+    osc.frequency.setValueAtTime(150, t);
+    osc.frequency.exponentialRampToValueAtTime(35, t + 0.5);
+    const gain = ctx.createGain();
+    gain.gain.setValueAtTime(0.7, t);
+    gain.gain.exponentialRampToValueAtTime(0.001, t + 0.6);
+    osc.connect(gain).connect(this.sfxBus);
+    osc.start(t);
+    osc.stop(t + 0.62);
+    this.splash(900, 120, 0.6, 0.45);
+  }
+
+  // Victory fanfare for a perfect (3-star) level: a fast run up two octaves,
+  // then a big held major chord, with a bass underneath.
+  fanfare() {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    const run = [0, 4, 7, 12, 16, 19, 24, 28, 31, 36];
+    run.forEach((semitones, i) => {
+      this.chipNote('square', 262 * 2 ** (semitones / 12), t + i * 0.055, 0.12, 0.08, this.sfxBus);
+    });
+    const hold = t + run.length * 0.055;
+    for (const semitones of [12, 16, 19, 24]) {
+      this.chipNote('square', 262 * 2 ** (semitones / 12), hold, 1.4, 0.07, this.sfxBus);
+      this.chipNote('triangle', 262 * 2 ** (semitones / 12), hold + 0.02, 1.6, 0.06, this.sfxBus);
+    }
+    this.chipNote('triangle', 65.4, hold, 1.6, 0.25, this.sfxBus);
+  }
+
+  // A shower of coin chimes over `seconds`, faster and higher as it goes,
+  // like a slot machine paying out.
+  coinShower(seconds = 1.8) {
+    if (!this.started) return;
+    const t = this.ctx.currentTime;
+    let at = 0;
+    let i = 0;
+    while (at < seconds) {
+      const progress = at / seconds;
+      const pitch = 988 * 2 ** ((Math.floor(progress * 12) + (i % 2) * 5) / 12);
+      this.chipNote('square', pitch, t + at, 0.06, 0.05, this.sfxBus);
+      at += 0.09 - progress * 0.05; // Speeds up from about 11 to 25 chimes a second.
+      i++;
+    }
+  }
+
   // A star appearing on the reunion screen; each one (0, 1, 2) a step higher.
   star(index) {
     if (!this.started) return;

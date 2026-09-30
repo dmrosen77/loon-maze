@@ -11,20 +11,27 @@ Guide a loon through a maze of reeds to reunite with its chick, before the bald 
 
 ## How to play
 
-- **Find the chick.** Each level is a new, randomly generated maze, and each one is a little bigger than the last. Big mazes scroll as you swim.
-- **Mind the reeds.** Swimming hard into a reed wall costs HP. Gentle bumps are free. Your HP carries from level to level, and every reunion heals a little. Run out, and the eagle swoops in.
-- **Dive under the reeds.** From level 6 on, the loon can dive and swim under the reed walls, after a short lesson. You get one dive per level at first, and an extra one at levels 11, 16 and 21. Each dive is a single short breath, and running out under the reeds costs HP.
+There are two ways to play, picked from the start menu:
+
+- **LAKES:** five Maine lakes, from little Cobbosseecontee to Moosehead, chosen on a map of Maine. Each lake is 4 days of 4 levels (dawn, day, sunset and night), 80 levels in all. Every level has the same maze each time and saves your best stars and score, so you can replay levels to earn more stars. Earn 32 of a lake's 48 stars to open the next one. **CONTINUE** takes you straight back to the next level you haven't beaten. Progress is saved in your browser.
+- **ARCADE:** one endless run of random mazes, with your HP carrying from level to level, for the high score table.
+
+- **Find the chick.** Mazes get bigger and more tangled as you go, with more forks and dead ends. Big mazes scroll as you swim.
+- **Mind the reeds.** Swimming hard into a reed wall costs HP. Gentle bumps are free. In ARCADE your HP carries from level to level, and every reunion heals a little. Run out, and the eagle swoops in.
+- **Dive under the reeds.** From Rangeley (or level 6 in ARCADE) the loon can dive and swim under the reed walls, after a short lesson. You get one dive per level at first, and more later (one more per lake, or at levels 11, 16 and 21 in ARCADE). Each dive is a single short breath, and running out under the reeds costs HP.
 - **Swim like a loon.** The loon speeds up, glides when you let go, curves through turns, bounces off the reeds and drifts with the current.
 - **Read the walls.** Rocks can't be dived under, beaver dams are slow to dive through, and floating logs are quick. Lily pad mats slow you down on the surface.
 - **Catch fish.** From level 2, fish dart around the maze. Catch them for points, and golden ones heal. Later, big air bubbles hidden in dead ends give an extra dive.
-- **Score big.** Each level earns 1000 × the level number, plus a speed bonus for finishing fast, and up to three stars. The top 10 scores go on the high score table with your initials, arcade style. If the game is hosted with its score server, that's a **world** table shared by everyone who plays there; otherwise it's kept on your device.
+- **Score big.** Each level earns 1000 points × how far in it is, plus a speed bonus for finishing fast, and up to three stars. The top 10 scores go on the high score table with your initials, arcade style. If the game is hosted with its score server, that's a **world** table shared by everyone who plays there; otherwise it's kept on your device.
 
 ## Controls
 
 | | Keyboard | Touch |
 |---|---|---|
 | Swim | Arrow keys | Drag anywhere on the screen; drag further to paddle harder |
-| Dive (from level 6) | Hold Space | Hold the "DIVE" button |
+| Dive (once unlocked) | Hold Space | Hold the "DIVE" button |
+| Menus and the lake map | Arrow keys, Enter | Tap |
+| Back to the map (LAKES) | Esc | "MAP" button |
 | Start / continue | Enter | Tap |
 | Mute | M | "SOUND" button |
 

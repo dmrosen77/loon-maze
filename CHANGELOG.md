@@ -6,6 +6,18 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **LAKES mode.** Five Maine lakes, smallest to largest: Cobbosseecontee, Rangeley, Mooselookmeguntic, Sebago and Moosehead. Each lake is 4 days, and each day is 4 levels: dawn, day, sunset and night. That's 80 levels, each with the same maze every time you play it, so you can learn it and beat your best. Each level saves its best stars and score on your device.
+- **A map of Maine** shows the lakes in their real places, with your stars for each. The next lake opens once you've earned 32 of the previous lake's 48 stars. Each lake's screen shows its 16 levels by day and time of day.
+- **Difficulty by lake and day.** Mazes grow bigger and branchier each day, and each lake starts a little easier than the last one ended, then climbs higher. Diving starts at Rangeley, with the dive lesson first, and each lake after adds a dive per level.
+- **PERFECT! celebration.** A 3-star level goes completely over the top: a flash, a boom and a screen shake, spinning light rays, a fountain of coins bursting from the stars and raining down, confetti, a flood of hearts filling the screen, and "PERFECT!" slamming in letter by letter in cycling rainbow colors, with a victory fanfare and a slot-machine shower of coin chimes.
+- **A start menu:** CONTINUE (straight back to the next level you haven't beaten), LAKES, and ARCADE (the endless run with the world high score table).
+
+### Changed
+- **ARCADE mazes grow in stages.** Instead of a little bigger every level, they stay the same size for four levels, then jump 4 tiles bigger each way (11×9, 15×13, 19×17 and so on, up to 41×31), with "BIGGER LAKE!" announced. Each stage is also branchier, with more forks to choose between.
+- The dive lesson only plays once per device. It can be replayed from Rangeley's screen.
+- Bumping the reeds in the dive lesson no longer costs HP. It's for practice, and HP carries into the next level.
+
 ## [1.5.0] - 2026-09-30
 
 ### Added

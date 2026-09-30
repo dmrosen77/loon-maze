@@ -12,13 +12,45 @@ export const MAX_VIEW_WIDTH = 1400;
 // maze in src/mazes/maze1.js (handy for testing a layout).
 export const PROCEDURAL_MAZE = true;
 
-// Level 1's maze size in tiles, and how many tiles each level adds.
-// Keep the level 1 sizes odd and the growth even so every maze is odd-sized.
+// Mazes grow in stages: LEVELS_PER_STAGE levels at one size, then the next
+// stage adds GROWTH_PER_STAGE tiles each way, up to the max. Keep the level 1
+// sizes odd and the growth even so every maze is odd-sized. Each stage the
+// mazes also get branchier (see generateMaze.js): 0 is long winding
+// corridors with few choices, 1 is lots of forks and short dead ends.
 export const LEVEL_1_COLS = 11;
 export const LEVEL_1_ROWS = 9;
-export const GROWTH_PER_LEVEL = 2;
+export const LEVELS_PER_STAGE = 4;
+export const GROWTH_PER_STAGE = 4;
 export const MAX_COLS = 41;
 export const MAX_ROWS = 31;
+export const BRANCHING_START = 0.05;
+export const BRANCHING_PER_STAGE = 0.08;
+export const BRANCHING_MAX = 0.5;
+
+// Which size stage an ARCADE level is in, starting from 0.
+export function mazeStage(level) {
+  return Math.floor((level - 1) / LEVELS_PER_STAGE);
+}
+
+// LAKES mode (src/lakes.js): each level's difficulty step `d` (0 for the
+// first lake's Day 1, up to 11 for Moosehead's Day 4) sets its maze: rows
+// grow by 2 per step and columns a little faster, reaching MAX_COLS x MAX_ROWS
+// at the last step, and branching rises by LAKE_BRANCHING_PER_STEP. Level
+// points are LEVEL_POINTS x (d + 1). The next lake opens with
+// LAKE_UNLOCK_STARS stars from the one before (of 48).
+export const LAKE_BRANCHING_PER_STEP = 0.04;
+export const LAKE_UNLOCK_STARS = 32;
+export const LAKE_LAST_STEP = 11;
+// What each lake adds, in LAKES order: dives per level (0 = no diving yet),
+// and whether extra-dive bubbles can appear. Diving starts at the second lake,
+// after the dive lesson.
+export const LAKE_FEATURES = [
+  { dives: 0, bubbles: false },
+  { dives: 1, bubbles: true },
+  { dives: 2, bubbles: true },
+  { dives: 3, bubbles: true },
+  { dives: 4, bubbles: true },
+];
 
 // How long the reunion cutscene plays before the next level starts (Enter skips it).
 export const REUNION_MS = 8000;

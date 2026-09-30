@@ -63,6 +63,10 @@ export default class GameOverScene extends Phaser.Scene {
   create(data) {
     this.level = data.level;
     this.score = data.score ?? 0;
+    // LAKES mode goes back to the lake map instead of the high scores.
+    this.mode = data.mode ?? 'arcade';
+    this.lake = data.lake;
+    this.number = data.number;
     this.canLeave = false;
     this.leaving = false;
     this.carrier = null;
@@ -279,7 +283,11 @@ export default class GameOverScene extends Phaser.Scene {
       this.leaving = true;
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
-        this.scene.start('HighScoreScene', { score: this.score, level: this.level });
+        if (this.mode === 'lakes') {
+          this.scene.start('LakeMapScene', { view: 'lake', lake: this.lake, select: this.number });
+        } else {
+          this.scene.start('HighScoreScene', { score: this.score, level: this.level });
+        }
       });
     }
   }

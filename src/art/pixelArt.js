@@ -188,6 +188,34 @@ const STAR_ROWS = [
 export const STAR = { palette: { o: '#8a5a00', y: '#ffd54f' }, rows: STAR_ROWS };
 export const STAR_EMPTY = { palette: { o: '#1c2233', y: '#3a4560' }, rows: STAR_ROWS };
 
+// A gold coin for the perfect-level celebration.
+export const COIN = {
+  palette: { o: '#9a6a12', y: '#ffd54f', Y: '#fff6c2', d: '#e0a526' },
+  rows: [
+    '.oooo.',
+    'oyYYyo',
+    'oyYyyo',
+    'oyyydo',
+    'oyyddo',
+    '.oooo.',
+  ],
+};
+
+// A padlock, for locked levels and lakes on the lake map.
+export const LOCK = {
+  palette: { k: '#15181c', g: '#d4d9e0', d: '#9aa2ac' },
+  rows: [
+    '..ggg..',
+    '.g...g.',
+    '.g...g.',
+    'ggggggg',
+    'gdddddg',
+    'gddkddg',
+    'gddkddg',
+    'ggggggg',
+  ],
+};
+
 // Reed tiles for the maze walls, seen from above. Unlike the loon these are
 // generated rather than hand-drawn. Each tile is built from:
 // - a variant (which fixed seed lays out its clumps and cattails),
