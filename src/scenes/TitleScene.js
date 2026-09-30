@@ -14,6 +14,7 @@ import { getLakeAudio } from '../audio.js';
 import { isTouchDevice, addMuteButton } from '../ui/touch.js';
 import { version } from '../../package.json';
 import { hasPlayedLakes, continuePoint } from '../progress.js';
+import { startWorldRun } from '../highScores.js';
 import PadInput from '../ui/gamepad.js';
 import loonBigUrl from '../assets/loon-big.png';
 import babyLoonBigUrl from '../assets/baby-loon-big.png';
@@ -366,6 +367,7 @@ export default class TitleScene extends Phaser.Scene {
       } else if (choice === 'LAKES') {
         this.scene.start('LakeMapScene', { view: 'lakes' });
       } else {
+        startWorldRun(); // A ticket for this run's score (see highScores.js).
         this.scene.start('GameScene', { mode: 'arcade', level: 1 });
       }
     });

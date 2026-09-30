@@ -10,7 +10,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "deploy": "bash scripts/deploy.sh",
-    "scores-server": "node server/scores-server.js"
+    "scores-server": "node server/scores-server.js",
+    "remove-score": "bash scripts/remove-score.sh"
   },
   "dependencies": {
     "@fontsource/press-start-2p": "^5.3.0",

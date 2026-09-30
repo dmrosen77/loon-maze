@@ -19,5 +19,26 @@ Environment=DATA_DIR=/var/lib/loon-maze
 Restart=always
 RestartSec=5
 
+# Sandboxing: if the server ever had a bug, it still couldn't gain privileges,
+# write anywhere but its scores folder, or see the rest of the system. (Checked
+# to work inside the Proxmox LXC container.)
+NoNewPrivileges=true
+ProtectSystem=strict
+ReadWritePaths=/var/lib/loon-maze
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictAddressFamilies=AF_INET AF_INET6 AF_UNIX
+RestrictNamespaces=true
+RestrictSUIDSGID=true
+RestrictRealtime=true
+LockPersonality=true
+SystemCallArchitectures=native
+CapabilityBoundingSet=
+MemoryMax=256M
+
 [Install]
 WantedBy=multi-user.target

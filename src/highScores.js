@@ -11,6 +11,7 @@ import { HIGH_SCORE_COUNT } from './config.js';
 const STORAGE_KEY = 'loon-maze-high-scores';
 // Relative, so it follows the game to whatever folder it's served from.
 const WORLD_URL = 'api/scores';
+const RUNS_URL = 'api/runs';
 const WORLD_TIMEOUT_MS = 4000;
 let fallback = [];
 
@@ -55,11 +56,11 @@ export function addHighScore(entry) {
 // Resolves to parsed JSON, or null if the server isn't there or doesn't
 // answer in time. (Without a server, a static host returns the game's page
 // or a 404 instead of JSON, which also comes back as null.)
-async function worldRequest(options = {}) {
+async function worldRequest(options = {}, url = WORLD_URL) {
   const controller = new AbortController();
   const timer = setTimeout(() => controller.abort(), WORLD_TIMEOUT_MS);
   try {
-    const response = await fetch(WORLD_URL, { ...options, signal: controller.signal });
+    const response = await fetch(url, { ...options, signal: controller.signal });
     if (!response.headers.get('content-type')?.includes('application/json')) return null;
     const body = await response.json();
     return response.ok ? body : null;
@@ -76,12 +77,28 @@ export async function fetchWorldScores() {
   return Array.isArray(body?.scores) ? body.scores : null;
 }
 
-// Submits an entry. Resolves to { rank, scores } or null if it couldn't be saved.
+// The score server hands out a ticket at the start of each ARCADE run, and a
+// score is only accepted with its run's ticket (once, and only after enough
+// time to have played that far). Asked for when the run starts; if there's
+// no server, there's no ticket and scores just stay on this device.
+let runTicket = null;
+
+export function startWorldRun() {
+  runTicket = null;
+  worldRequest({ method: 'POST' }, RUNS_URL).then((body) => {
+    if (typeof body?.run === 'string') runTicket = body.run;
+  });
+}
+
+// Submits an entry with this run's ticket (used up either way). Resolves to
+// { rank, scores } or null if it couldn't be saved.
 export async function submitWorldScore(entry) {
+  const run = runTicket;
+  runTicket = null;
   const body = await worldRequest({
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(entry),
+    body: JSON.stringify({ ...entry, run }),
   });
   return Array.isArray(body?.scores) ? { rank: body.rank, scores: body.scores } : null;
 }

@@ -34,7 +34,7 @@ pack -C dist . | in_container '
 '
 
 echo "Deploying the score server to /opt/loon-maze-scores..."
-pack package.json src/config.js server/scores-server.js server/loon-maze-scores.service | in_container '
+pack package.json src/config.js server/scores-server.js server/scoresFile.js server/remove-score.js server/loon-maze-scores.service | in_container '
   set -e
   id loon-scores >/dev/null 2>&1 || useradd --system --no-create-home --shell /usr/sbin/nologin loon-scores
   mkdir -p /var/lib/loon-maze && chown loon-scores:loon-scores /var/lib/loon-maze && chmod 750 /var/lib/loon-maze
