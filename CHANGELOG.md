@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.10.0] - 2026-09-30
+
 ### Added
 - **Snapping turtles.** They patrol straight stretches of open water, paddling back and forth. Swim into one and it snaps: 3 HP and a knockback. Turtles on the way to the chick sink under the water every few seconds (a dark shadow with bubbles, bubbling harder just before they come back up), so you can time your way over them. A turtle can't bite you while it's rising, or if you were already over it when it came up; or dive to pass under. They arrive at level 4 in ARCADE (more as you go) and at Mooselookmeguntic in LAKES (more each day and each lake).
 - **A wandering chick.** From level 5 in ARCADE and Mooselookmeguntic's Day 1 - Day in LAKES, the chick paddles around near its spot, peeping, instead of waiting in one place. Later on it roams further.
@@ -142,7 +144,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.9.1...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.10.0...HEAD
+[1.10.0]: https://github.com/dmrosen77/loon-maze/compare/v1.9.1...v1.10.0
 [1.9.1]: https://github.com/dmrosen77/loon-maze/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/dmrosen77/loon-maze/compare/v1.8.0...v1.9.0
 [1.8.0]: https://github.com/dmrosen77/loon-maze/compare/v1.7.0...v1.8.0
