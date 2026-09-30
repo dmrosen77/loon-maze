@@ -12,9 +12,10 @@ import { tileCenter } from '../mazes/mazeInfo.js';
 // Lake life: lily pads (some with a water lily) floating in the open water
 // off the main path, frogs sitting on some of them that hop into the water
 // when the loon comes close, and dragonflies darting around the view. None
-// of it gets in the loon's way.
+// of it gets in the loon's way. `pads: false` leaves out the pads and frogs
+// (the dive lesson, where they'd be confused with lily pad mats).
 export default class Decor {
-  constructor(scene, info, { padDepth, critterDepth, onFrogSplash }) {
+  constructor(scene, info, { padDepth, critterDepth, onFrogSplash, pads = true }) {
     this.scene = scene;
     this.onFrogSplash = onFrogSplash;
     makePixelTexture(scene, 'lily-pad-top', LILY_PAD, SPRITE_PIXEL_SIZE);
@@ -34,8 +35,10 @@ export default class Decor {
     this.frogs = [];
     const quarterTurns = [0, 90, 180, 270];
     for (const tile of info.open) {
-      // The path to the chick (which includes the start) stays clear.
-      if (info.onPath(tile.col, tile.row) || Math.random() >= LILY_PAD_CHANCE) continue;
+      // The path to the chick (which includes the start) stays clear, and
+      // lily pad mats already have pads.
+      if (info.onPath(tile.col, tile.row) || scene.terrain.isMat(tile.col, tile.row)) continue;
+      if (!pads || Math.random() >= LILY_PAD_CHANCE) continue;
       const { x, y } = tileCenter(tile);
       const padX = x + Phaser.Math.Between(-6, 6);
       const padY = y + Phaser.Math.Between(-6, 6);

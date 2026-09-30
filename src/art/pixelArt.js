@@ -309,6 +309,180 @@ export function reedTexture(scene, variant, waterSides, frame, tileSize, pixelSi
   return key;
 }
 
+// Special wall tiles (see src/mazes/terrain.js), generated like the reeds but
+// without sway. Each is exactly one maze tile.
+
+// Rocks: a few rounded boulders, lit from the top left, packed over dark
+// gravel, with specks of moss.
+const ROCK_PALETTE = {
+  k: '#23262b', // crevices
+  g: '#3a3e45', // gravel
+  d: '#50555d', // boulder shade
+  r: '#6d737b', // boulder
+  l: '#959ba3', // lit side
+  h: '#b9bfc6', // highlight
+  m: '#55713f', // moss
+};
+
+// How far a pixel is from the nearest edge that faces water (Infinity if none).
+function depthFromWater(x, y, size, waterSides) {
+  return Math.min(
+    waterSides & WATER_SIDE.N ? y : Infinity,
+    waterSides & WATER_SIDE.S ? size - 1 - y : Infinity,
+    waterSides & WATER_SIDE.W ? x : Infinity,
+    waterSides & WATER_SIDE.E ? size - 1 - x : Infinity,
+  );
+}
+
+// Crumble the edges that face water: the outermost pixels are mostly gone,
+// thinning out over the first two pixels in, so the tile doesn't end in a
+// hard straight line. Only `crumbly` pixels (the filler, not the boulders or
+// sticks on top) are removed.
+function crumbleEdges(grid, rng, size, waterSides, crumbly) {
+  const CLEAR = [0.6, 0.25];
+  for (let y = 0; y < size; y++) {
+    for (let x = 0; x < size; x++) {
+      const depth = depthFromWater(x, y, size, waterSides);
+      if (depth < CLEAR.length && crumbly.includes(grid[y][x]) && rng.frac() < CLEAR[depth]) grid[y][x] = '.';
+    }
+  }
+}
+
+function rockTileRows(variant, waterSides, size) {
+  const rng = new Phaser.Math.RandomDataGenerator([`rock-${variant}`]);
+  const edgeRng = new Phaser.Math.RandomDataGenerator([`rock-${variant}-${waterSides}`]);
+  const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => (rng.frac() < 0.35 ? 'k' : 'g')));
+  crumbleEdges(grid, edgeRng, size, waterSides, ['k', 'g']);
+  const boulders = rng.between(3, 4);
+  for (let i = 0; i < boulders; i++) {
+    const r = rng.between(4, 7);
+    // Whole boulders, never cut off by the tile's edge.
+    const cx = rng.between(r, size - 1 - r);
+    const cy = rng.between(r, size - 1 - r);
+    for (let y = Math.max(0, cy - r); y <= Math.min(size - 1, cy + r); y++) {
+      for (let x = Math.max(0, cx - r); x <= Math.min(size - 1, cx + r); x++) {
+        const dx = x - cx;
+        const dy = y - cy;
+        const distance = Math.hypot(dx, dy);
+        if (distance > r) continue;
+        const light = -(dx + dy) / r; // Toward the top left is lit.
+        let char = light > 0.9 ? 'h' : light > 0.35 ? 'l' : light < -0.6 ? 'd' : 'r';
+        if (distance > r - 1) char = light > 0.3 ? 'd' : 'k'; // Rim
+        grid[y][x] = char;
+      }
+    }
+  }
+  for (let i = 0; i < 6; i++) {
+    const x = rng.between(1, size - 2);
+    const y = rng.between(1, size - 2);
+    if (grid[y][x] === 'r' || grid[y][x] === 'd') grid[y][x] = 'm';
+  }
+  return grid.map((row) => row.join(''));
+}
+
+// A beaver dam: sticks crisscrossing over mud, with a few leaves.
+const DAM_PALETTE = {
+  m: '#3a2a1c', // mud
+  M: '#2c2016', // deep mud
+  s: '#6b4a2e', // stick
+  S: '#8f6a43', // lit stick
+  t: '#4f3622', // stick shadow
+  g: '#5f7f3a', // leaf
+};
+
+function damTileRows(variant, waterSides, size) {
+  const rng = new Phaser.Math.RandomDataGenerator([`dam-${variant}`]);
+  const edgeRng = new Phaser.Math.RandomDataGenerator([`dam-${variant}-${waterSides}`]);
+  const grid = Array.from({ length: size }, () => Array.from({ length: size }, () => (rng.frac() < 0.3 ? 'M' : 'm')));
+  crumbleEdges(grid, edgeRng, size, waterSides, ['m', 'M']);
+  const put = (x, y, char) => {
+    if (x >= 0 && y >= 0 && x < size && y < size) grid[y][x] = char;
+  };
+  for (let i = 0; i < 16; i++) {
+    const angle = rng.frac() * Math.PI;
+    const length = rng.between(7, 18);
+    const x0 = rng.between(0, size - 1);
+    const y0 = rng.between(0, size - 1);
+    for (let j = 0; j < length; j++) {
+      const x = Math.round(x0 + Math.cos(angle) * (j - length / 2));
+      const y = Math.round(y0 + Math.sin(angle) * (j - length / 2));
+      put(x, y + 1, 't');
+      put(x, y, j % 5 === 0 ? 'S' : 's');
+    }
+  }
+  for (let i = 0; i < 4; i++) put(rng.between(0, size - 1), rng.between(0, size - 1), 'g');
+  return grid.map((row) => row.join(''));
+}
+
+// A floating log lying along the wall, with water showing at its sides.
+// `across` is 'h' (lying left to right) or 'v' (top to bottom).
+const LOG_PALETTE = {
+  o: '#2e1d10', // outline
+  b: '#6e4a2c', // bark
+  l: '#93683d', // lit bark
+  d: '#4f341e', // bark grooves
+  k: '#3a2616', // knot
+};
+
+function logTileRows(variant, across, size) {
+  const rng = new Phaser.Math.RandomDataGenerator([`log-${variant}`]);
+  const top = 3;
+  const bottom = size - 4;
+  const grid = Array.from({ length: size }, (_, y) =>
+    Array.from({ length: size }, () => (y < top || y > bottom ? '.' : 'b')),
+  );
+  for (let x = 0; x < size; x++) {
+    grid[top][x] = 'o';
+    grid[bottom][x] = 'o';
+    grid[top + 1][x] = 'l';
+    grid[top + 2][x] = rng.frac() < 0.7 ? 'l' : 'b';
+  }
+  // Grooves running along the bark.
+  for (let i = 0; i < 9; i++) {
+    const y = rng.between(top + 3, bottom - 1);
+    const x = rng.between(0, size - 1);
+    const length = rng.between(3, 8);
+    for (let j = 0; j < length; j++) grid[y][(x + j) % size] = 'd';
+  }
+  const knotX = rng.between(3, size - 4);
+  const knotY = rng.between(top + 3, bottom - 3);
+  grid[knotY][knotX] = 'k';
+  grid[knotY][knotX + 1] = 'k';
+  grid[knotY + 1][knotX] = 'd';
+  const rows = grid.map((row) => row.join(''));
+  if (across === 'h') return rows;
+  return rows.map((_, x) => rows.map((row) => row[x]).join('')); // Turned upright.
+}
+
+// Texture keys for the special walls, made on first use.
+// `waterSides` (WATER_SIDE flags) are the edges that crumble into the water.
+export function rockTexture(scene, variant, waterSides, tileSize, pixelSize) {
+  const key = `rock-${variant}-${waterSides}`;
+  if (!scene.textures.exists(key)) {
+    const rows = rockTileRows(variant, waterSides, tileSize / pixelSize);
+    makePixelTexture(scene, key, { palette: ROCK_PALETTE, rows }, pixelSize);
+  }
+  return key;
+}
+
+export function damTexture(scene, variant, waterSides, tileSize, pixelSize) {
+  const key = `dam-${variant}-${waterSides}`;
+  if (!scene.textures.exists(key)) {
+    const rows = damTileRows(variant, waterSides, tileSize / pixelSize);
+    makePixelTexture(scene, key, { palette: DAM_PALETTE, rows }, pixelSize);
+  }
+  return key;
+}
+
+export function logTexture(scene, variant, across, tileSize, pixelSize) {
+  const key = `log-${variant}-${across}`;
+  if (!scene.textures.exists(key)) {
+    const rows = logTileRows(variant, across, tileSize / pixelSize);
+    makePixelTexture(scene, key, { palette: LOG_PALETTE, rows }, pixelSize);
+  }
+  return key;
+}
+
 // A seamless tile of lake water: short ripple dashes and the odd glint on a
 // blue base. Dashes wrap around the edges so the tile repeats without seams.
 const WATER_PALETTE = {

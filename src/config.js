@@ -116,6 +116,22 @@ export const FEATURE_LEVELS = {
   diveBubbles: 7,
 };
 
+// Special walls and patches (src/mazes/terrain.js), from level 1. They all
+// block the loon on the surface like reeds, so every maze stays solvable;
+// they only change diving. Of the inner wall tiles, ROCK_CHANCE become rocks
+// (can't be dived under). Of the thin walls between two corridors, DAM_CHANCE
+// become beaver dams (dive through at DAM_DIVE_SPEED_FACTOR of diving speed)
+// and LOG_CHANCE floating logs (dive under using air at LOG_AIR_FACTOR of the
+// usual rate). MAT_CHANCE of the open tiles get a lily pad mat, which slows
+// the loon on the surface to MAT_SPEED_FACTOR (diving under it is normal).
+export const ROCK_CHANCE = 0.1;
+export const DAM_CHANCE = 0.12;
+export const LOG_CHANCE = 0.12;
+export const MAT_CHANCE = 0.05;
+export const DAM_DIVE_SPEED_FACTOR = 0.65;
+export const LOG_AIR_FACTOR = 0.5;
+export const MAT_SPEED_FACTOR = 0.5;
+
 // Fish dart around the open water: swim into one for FISH_POINTS. Some
 // (GOLDEN_FISH_CHANCE) are golden and heal GOLDEN_FISH_HEAL HP instead. They
 // wander at FISH_SPEED and flee at FISH_FLEE_SPEED (slower than the loon)

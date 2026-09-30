@@ -40,6 +40,9 @@ import {
   DIVE_SHADOW_ALPHA,
   DIVE_BUBBLE_MS,
   FEATURE_LEVELS,
+  DAM_DIVE_SPEED_FACTOR,
+  LOG_AIR_FACTOR,
+  MAT_SPEED_FACTOR,
   FISH_POINTS,
   fishForLevel,
   GOLDEN_FISH_HEAL,
@@ -48,7 +51,7 @@ import {
   FONT_FAMILY,
 } from '../config.js';
 import handMadeMaze from '../mazes/maze1.js';
-import diveLessonMaze from '../mazes/diveLesson.js';
+import diveLessonLayout, { LESSON_HINTS } from '../mazes/diveLesson.js';
 import generateMaze from '../mazes/generateMaze.js';
 import {
   LOON_TOP_FEET_OUT,
@@ -59,11 +62,16 @@ import {
   REED_SWAY_FRAMES,
   WATER_SIDE,
   reedTexture,
+  rockTexture,
+  damTexture,
+  logTexture,
+  LILY_PAD,
   makePixelTexture,
   makeWaterTexture,
 } from '../art/pixelArt.js';
 import { getLakeAudio } from '../audio.js';
-import mazeInfo from '../mazes/mazeInfo.js';
+import mazeInfo, { tileAt } from '../mazes/mazeInfo.js';
+import assignTerrain, { plainMaze } from '../mazes/terrain.js';
 import Lighting, { timeOfDayForLevel } from '../game/Lighting.js';
 import Decor from '../game/Decor.js';
 import Fish from '../game/Fish.js';
@@ -81,6 +89,18 @@ const TEXT_STYLE = {
   align: 'center',
   lineSpacing: 16,
 };
+
+// Which sides of a wall tile face open water (or the lake beyond the maze),
+// as WATER_SIDE flags: those edges fray or crumble.
+function waterSides(maze, col, row) {
+  const isWater = (c, r) => maze[r]?.[c] === undefined || maze[r][c] !== '#';
+  return (
+    (isWater(col, row - 1) ? WATER_SIDE.N : 0) |
+    (isWater(col + 1, row) ? WATER_SIDE.E : 0) |
+    (isWater(col, row + 1) ? WATER_SIDE.S : 0) |
+    (isWater(col - 1, row) ? WATER_SIDE.W : 0)
+  );
+}
 
 // Layers, bottom to top. The time-of-day tint covers everything below it;
 // night glows, pop-up effects and the HUD sit above it.
@@ -155,9 +175,12 @@ export default class GameScene extends Phaser.Scene {
     // from when the scene last ran until then.
     this.levelStartTime = null;
 
-    const maze = this.lesson ? diveLessonMaze : mazeForLevel(this.level);
+    const maze = this.lesson ? plainMaze(diveLessonLayout) : mazeForLevel(this.level);
     this.maze = maze; // Kept for corner assist and diving, which need to know where the walls are.
     this.info = mazeInfo(maze); // Open tiles, the path to the chick and so on, for placing things.
+    // Rocks, beaver dams, logs and lily pad mats: random, or laid out by hand
+    // in the dive lesson.
+    this.terrain = assignTerrain(this.info, { layout: this.lesson ? diveLessonLayout : null });
     const mazeWidth = maze[0].length * TILE_SIZE;
     const mazeHeight = maze.length * TILE_SIZE;
 
@@ -180,10 +203,12 @@ export default class GameScene extends Phaser.Scene {
     if (water) makeWaterTexture(this, TILE_SIZE, SPRITE_PIXEL_SIZE, { key: waterKey, palette: water });
     this.water = this.add.tileSprite(lake.x, lake.y, lake.width, lake.height, waterKey).setOrigin(0).setDepth(DEPTH.water);
     this.createWake();
+    this.addMats();
     // The camera has to be on the loon's start before placing things "in view".
     camera.setBounds(lake.x, lake.y, lake.width, lake.height);
 
-    const reeds = this.physics.add.staticGroup();
+    const reeds = this.physics.add.staticGroup(); // Every wall the loon can dive under.
+    const rocks = this.physics.add.staticGroup(); // Walls it can't.
     this.reedTiles = [];
     this.time.addEvent({ delay: 100, loop: true, callback: () => this.swayReeds() });
     let loonStart;
@@ -194,7 +219,7 @@ export default class GameScene extends Phaser.Scene {
         const x = colIndex * TILE_SIZE + TILE_SIZE / 2;
         const y = rowIndex * TILE_SIZE + TILE_SIZE / 2;
         if (cell === '#') {
-          this.addReedTile(reeds, maze, colIndex, rowIndex, x, y);
+          this.addWallTile(reeds, rocks, maze, colIndex, rowIndex, x, y);
         } else if (cell === 'P') {
           loonStart = { x, y };
         } else if (cell === 'B') {
@@ -227,6 +252,7 @@ export default class GameScene extends Phaser.Scene {
 
     // Diving switches the reeds' collider off; the chick is only reached on the surface.
     this.reedCollider = this.physics.add.collider(this.loon, reeds, this.bump, null, this);
+    this.physics.add.collider(this.loon, rocks, this.bump, null, this); // Rocks go down to the lakebed.
     this.physics.add.overlap(this.loon, this.baby, this.reunite, () => !this.diving, this);
 
     camera.startFollow(this.loon, true);
@@ -235,6 +261,7 @@ export default class GameScene extends Phaser.Scene {
     this.decor = new Decor(this, this.info, {
       padDepth: DEPTH.pads,
       critterDepth: DEPTH.critters,
+      pads: !this.lesson,
       onFrogSplash: (x, y) => {
         this.wake.emitParticleAt(x, y, 6);
         ripple(this, x, y, { depth: DEPTH.ripples, radius: 14 });
@@ -281,19 +308,55 @@ export default class GameScene extends Phaser.Scene {
     }
   }
 
+  // A wall tile: reeds, or one of the special walls the terrain picked. Rocks
+  // go in their own group, since they block the loon even when it dives.
+  addWallTile(reeds, rocks, maze, col, row, x, y) {
+    const kind = this.terrain.wallKind(col, row);
+    if (kind === 'reeds') {
+      this.addReedTile(reeds, maze, col, row, x, y);
+      return;
+    }
+    const variant = Phaser.Math.Between(0, 3);
+    const sides = waterSides(maze, col, row);
+    const texture =
+      kind === 'rock'
+        ? rockTexture(this, variant, sides, TILE_SIZE, SPRITE_PIXEL_SIZE)
+        : kind === 'dam'
+          ? damTexture(this, variant, sides, TILE_SIZE, SPRITE_PIXEL_SIZE)
+          : logTexture(this, variant, this.terrain.logAcross(col, row), TILE_SIZE, SPRITE_PIXEL_SIZE);
+    const image = this.add.image(x, y, texture).setDepth(DEPTH.reeds);
+    (kind === 'rock' ? rocks : reeds).add(image);
+  }
+
+  // Lily pad mats: a tile covered in overlapping pads. They slow the loon on
+  // the surface (see swim()).
+  addMats() {
+    makePixelTexture(this, 'lily-pad-top', LILY_PAD, SPRITE_PIXEL_SIZE);
+    const turns = [0, 90, 180, 270];
+    for (const { col, row } of this.info.open) {
+      if (!this.terrain.isMat(col, row)) continue;
+      for (let i = 0; i < 6; i++) {
+        this.add
+          .image(
+            col * TILE_SIZE + Phaser.Math.Between(8, TILE_SIZE - 8),
+            row * TILE_SIZE + Phaser.Math.Between(8, TILE_SIZE - 8),
+            'lily-pad-top',
+          )
+          .setAngle(Phaser.Utils.Array.GetRandom(turns))
+          .setScale(Phaser.Math.FloatBetween(0.8, 1.1))
+          .setDepth(DEPTH.pads - 0.1);
+      }
+    }
+  }
+
   // A random variation of reeds, with frayed edges on the sides that face
   // water. All its sway frames are made up front so animating never stalls.
   addReedTile(reeds, maze, col, row, x, y) {
-    const isWater = (c, r) => maze[r]?.[c] === undefined || maze[r][c] !== '#';
-    const waterSides =
-      (isWater(col, row - 1) ? WATER_SIDE.N : 0) |
-      (isWater(col + 1, row) ? WATER_SIDE.E : 0) |
-      (isWater(col, row + 1) ? WATER_SIDE.S : 0) |
-      (isWater(col - 1, row) ? WATER_SIDE.W : 0);
+    const sides = waterSides(maze, col, row);
     const variant = Phaser.Math.Between(0, REED_TILE_VARIANTS - 1);
     const frames = [];
     for (let frame = 0; frame < REED_SWAY_FRAMES; frame++) {
-      frames.push(reedTexture(this, variant, waterSides, frame, TILE_SIZE, SPRITE_PIXEL_SIZE));
+      frames.push(reedTexture(this, variant, sides, frame, TILE_SIZE, SPRITE_PIXEL_SIZE));
     }
 
     const upright = 1;
@@ -464,19 +527,28 @@ export default class GameScene extends Phaser.Scene {
     });
   }
 
-  // How to dive, along the bottom of the screen for the whole lesson.
+  // The lesson's hint along the bottom of the screen, which changes as the
+  // loon reaches each room (see updateLessonHint()).
   showLessonHints() {
     const { width, height } = this.scale;
-    const how = isTouchDevice() ? 'HOLD DIVE' : 'HOLD SPACE';
-    this.add
-      .text(width / 2, height - 76, `SWIM UP TO THE REEDS, ${how}\nAND SWIM UNDER THEM TO YOUR CHICK`, {
-        ...TEXT_STYLE,
-        fontSize: '14px',
-        strokeThickness: 4,
-      })
+    this.lessonHint = this.add
+      .text(width / 2, height - 76, '', { ...TEXT_STYLE, fontSize: '14px', strokeThickness: 4 })
       .setOrigin(0.5)
       .setScrollFactor(0)
       .setDepth(DEPTH.hud);
+    this.lessonHintIndex = -1;
+    this.updateLessonHint();
+  }
+
+  updateLessonHint() {
+    const { col } = tileAt(this.loon.x, this.loon.y);
+    const index = LESSON_HINTS.findLastIndex((hint) => col >= hint.fromCol);
+    if (index === this.lessonHintIndex) return;
+    this.lessonHintIndex = index;
+    const text = LESSON_HINTS[index].text.replace('{DIVE}', isTouchDevice() ? 'DIVE' : 'SPACE');
+    this.lessonHint.setText(text).setAlpha(0);
+    this.tweens.add({ targets: this.lessonHint, alpha: 1, duration: 300 });
+    if (index > 0) this.audio?.blip(7);
   }
 
   // The collider fires every frame while pushing into reeds, so only count a
@@ -485,6 +557,12 @@ export default class GameScene extends Phaser.Scene {
   // cost HP.
   bump() {
     const now = this.time.now;
+    // Underwater only rocks can be hit: a muffled bonk, no damage.
+    if (this.diving) {
+      if (now - this.lastBumpTime > 300) this.audio?.bump();
+      this.lastBumpTime = now;
+      return;
+    }
     if (now - this.lastBumpTime > 200 && this.impactSpeed >= LOON_HIT_MIN_SPEED) {
       this.audio?.bump();
       ripple(this, this.loon.x, this.loon.y, { depth: DEPTH.ripples, radius: 16 });
@@ -615,7 +693,7 @@ export default class GameScene extends Phaser.Scene {
       if (this.divesLeft > 0) this.air = Math.min(AIR_PER_DIVE_MS, this.air + delta * AIR_REFILL);
       if (pressed && this.divesLeft > 0 && this.air >= AIR_PER_DIVE_MS) this.startDive();
     } else {
-      this.air = Math.max(0, this.air - delta);
+      this.air = Math.max(0, this.air - delta * (this.wallsOverhead() === 'log' ? LOG_AIR_FACTOR : 1));
       const underReeds = this.isUnderReeds();
       if (this.air <= 0) {
         if (underReeds) this.popBack(time);
@@ -632,13 +710,24 @@ export default class GameScene extends Phaser.Scene {
 
   // Whether any part of the loon's collision box is over a reed tile.
   isUnderReeds() {
+    return this.wallsOverhead() !== null;
+  }
+
+  // What the diving loon is under: null (open water), or the slowest kind of
+  // wall its collision box overlaps: 'dam', then 'reeds', then 'log' (so a
+  // log's air saving only counts when the loon is under nothing but logs).
+  wallsOverhead() {
     const { x, y, width, height } = this.loon.body;
+    let overhead = null;
+    const rank = { log: 1, reeds: 2, dam: 3 };
     for (let row = Math.floor(y / TILE_SIZE); row <= Math.floor((y + height - 1) / TILE_SIZE); row++) {
       for (let col = Math.floor(x / TILE_SIZE); col <= Math.floor((x + width - 1) / TILE_SIZE); col++) {
-        if (this.maze[row]?.[col] === '#') return true;
+        if (this.maze[row]?.[col] !== '#') continue;
+        const kind = this.terrain.wallKind(col, row);
+        if (!overhead || rank[kind] > rank[overhead]) overhead = kind;
       }
     }
-    return false;
+    return overhead;
   }
 
   startDive() {
@@ -683,6 +772,7 @@ export default class GameScene extends Phaser.Scene {
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
     this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
     this.decor.update(this.loon);
+    if (this.lesson && !this.reunited) this.updateLessonHint();
     if (!this.reunited && !this.gameOver) {
       this.fish.update(this.loon);
       this.pickups?.update(this.loon);
@@ -781,13 +871,21 @@ export default class GameScene extends Phaser.Scene {
   swim(input, paddling, delta) {
     const velocity = this.loon.body.velocity;
     const target = paddling
-      ? input.clone().scale(LOON_SPEED * (this.diving ? DIVE_SPEED_FACTOR : 1))
+      ? input.clone().scale(LOON_SPEED * this.speedFactor())
       : new Phaser.Math.Vector2(WATER_DRIFT.x, WATER_DRIFT.y).scale(LOON_FLOAT_DRIFT);
     const maxChange = ((paddling ? LOON_ACCELERATION : LOON_GLIDE_DRAG) * delta) / 1000;
     const change = target.subtract(velocity);
     if (change.length() > maxChange) change.setLength(maxChange);
     velocity.add(change);
     this.impactSpeed = velocity.length();
+  }
+
+  // How fast the loon can swim here, as a fraction of LOON_SPEED: slower
+  // underwater, slower still through a beaver dam, and slow over lily pad mats.
+  speedFactor() {
+    if (this.diving) return DIVE_SPEED_FACTOR * (this.wallsOverhead() === 'dam' ? DAM_DIVE_SPEED_FACTOR : 1);
+    const { col, row } = tileAt(this.loon.x, this.loon.y);
+    return this.terrain.isMat(col, row) ? MAT_SPEED_FACTOR : 1;
   }
 
   // Paddle while a direction is held; glide with feet tucked otherwise. The
