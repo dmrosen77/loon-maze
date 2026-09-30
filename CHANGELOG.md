@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.6.0] - 2026-09-30
+
 ### Added
 - **LAKES mode.** Five Maine lakes, smallest to largest: Cobbosseecontee, Rangeley, Mooselookmeguntic, Sebago and Moosehead. Each lake is 4 days, and each day is 4 levels: dawn, day, sunset and night. That's 80 levels, each with the same maze every time you play it, so you can learn it and beat your best. Each level saves its best stars and score on your device.
 - **A map of Maine** shows the lakes in their real places, with your stars for each. The next lake opens once you've earned 32 of the previous lake's 48 stars. Each lake's screen shows its 16 levels by day and time of day.
@@ -102,7 +104,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.5.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.6.0...HEAD
+[1.6.0]: https://github.com/dmrosen77/loon-maze/compare/v1.5.0...v1.6.0
 [1.5.0]: https://github.com/dmrosen77/loon-maze/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/dmrosen77/loon-maze/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/dmrosen77/loon-maze/compare/v1.3.0...v1.3.1
