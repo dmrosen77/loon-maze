@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.5.0] - 2026-09-30
+
 ### Added
 - **Fish.** From level 2, fish dart around the open water and bolt when you get close. Catch one for 50 points; golden ones heal 3 HP instead. More fish on later levels. Points show in the corner as you earn them, and fish points get their own line on the reunion screen.
 - **Extra-dive bubbles.** From level 7, some levels hide a big air bubble in a dead end off the main path. Grab it for an extra dive that level.
@@ -88,7 +90,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.4.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.5.0...HEAD
+[1.5.0]: https://github.com/dmrosen77/loon-maze/compare/v1.4.0...v1.5.0
 [1.4.0]: https://github.com/dmrosen77/loon-maze/compare/v1.3.1...v1.4.0
 [1.3.1]: https://github.com/dmrosen77/loon-maze/compare/v1.3.0...v1.3.1
 [1.3.0]: https://github.com/dmrosen77/loon-maze/compare/v1.2.0...v1.3.0
