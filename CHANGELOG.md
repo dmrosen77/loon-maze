@@ -6,6 +6,8 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.11.0] - 2026-10-10
+
 ### Added
 - **The eagle hunts.** From level 8 in ARCADE and Sebago in LAKES, the eagle makes a pass every 16–26 seconds: a screech and a flashing red arrow at the screen's edge show where it's coming from, then its huge shadow sweeps across the lake, aimed at where you were. If it passes over you it costs 5 HP. Dive to hide, or get out of its way.
 - **Currents.** From level 9 in ARCADE and Sebago's Day 1 - Day in LAKES, some straight channels have a current (bright streaks drifting along them). It carries you faster going with it, slows you going against it, and sweeps you along if you stop.
@@ -153,7 +155,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.10.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.11.0...HEAD
+[1.11.0]: https://github.com/dmrosen77/loon-maze/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/dmrosen77/loon-maze/compare/v1.9.1...v1.10.0
 [1.9.1]: https://github.com/dmrosen77/loon-maze/compare/v1.9.0...v1.9.1
 [1.9.0]: https://github.com/dmrosen77/loon-maze/compare/v1.8.0...v1.9.0
