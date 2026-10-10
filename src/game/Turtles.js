@@ -11,7 +11,7 @@ import {
   SPRITE_PIXEL_SIZE,
 } from '../config.js';
 import { TURTLE_LEGS_OUT, TURTLE_LEGS_BACK, makePixelTexture } from '../art/pixelArt.js';
-import { tileCenter } from '../mazes/mazeInfo.js';
+import { tileCenter, straightRuns, splitRun } from '../mazes/mazeInfo.js';
 
 const BITE_DISTANCE = 24;
 const BITE_COOLDOWN_MS = 800;
@@ -48,7 +48,7 @@ export default class Turtles {
 
     const allowed = ({ col, row }) =>
       info.distanceFromStart(col, row) >= TURTLE_START_CLEAR && !(col === info.baby.col && row === info.baby.row);
-    const runs = straightRuns(info).flatMap((run) => splitRun(run, allowed));
+    const runs = straightRuns(info, MIN_RUN).flatMap((run) => splitRun(run, allowed, MIN_RUN));
     // Shuffle with the level's random, then take runs that don't share tiles.
     for (let i = runs.length - 1; i > 0; i--) {
       const j = Math.floor(random() * (i + 1));
@@ -138,44 +138,4 @@ export default class Turtles {
       this.scene.tweens.add({ targets: turtle, scale: 1.25, duration: 90, yoyo: true });
     }
   }
-}
-
-// Every maximal straight line of open tiles, across and down.
-function straightRuns(info) {
-  const runs = [];
-  for (let row = 0; row < info.rows; row++) {
-    let run = [];
-    for (let col = 0; col <= info.cols; col++) {
-      if (col < info.cols && info.isOpen(col, row)) run.push({ col, row });
-      else {
-        if (run.length >= MIN_RUN) runs.push(run);
-        run = [];
-      }
-    }
-  }
-  for (let col = 0; col < info.cols; col++) {
-    let run = [];
-    for (let row = 0; row <= info.rows; row++) {
-      if (row < info.rows && info.isOpen(col, row)) run.push({ col, row });
-      else {
-        if (run.length >= MIN_RUN) runs.push(run);
-        run = [];
-      }
-    }
-  }
-  return runs;
-}
-
-// The parts of a run made of allowed tiles, long enough to patrol.
-function splitRun(run, allowed) {
-  const parts = [];
-  let part = [];
-  for (const tile of [...run, null]) {
-    if (tile && allowed(tile)) part.push(tile);
-    else {
-      if (part.length >= MIN_RUN) parts.push(part);
-      part = [];
-    }
-  }
-  return parts;
 }

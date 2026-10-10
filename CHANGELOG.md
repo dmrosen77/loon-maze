@@ -6,6 +6,15 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+### Added
+- **The eagle hunts.** From level 8 in ARCADE and Sebago in LAKES, the eagle makes a pass every 16–26 seconds: a screech and a flashing red arrow at the screen's edge show where it's coming from, then its huge shadow sweeps across the lake, aimed at where you were. If it passes over you it costs 5 HP. Dive to hide, or get out of its way.
+- **Currents.** From level 9 in ARCADE and Sebago's Day 1 - Day in LAKES, some straight channels have a current (bright streaks drifting along them). It carries you faster going with it, slows you going against it, and sweeps you along if you stop.
+- Phones held upright now also say how to switch off Portrait Orientation Lock if the screen won't turn.
+
+### Fixed
+- Swimming hard into the maze's outer wall now costs HP like any other reed wall (it used to stop you with no bump at all).
+- Diving in place beside a wall no longer lets the lake's drift carry you under it, which could strand you until your breath ran out and cost 3 HP. If only the edge of the loon is under the reeds when it comes up, it's eased back into the open.
+
 ## [1.10.0] - 2026-09-30
 
 ### Added

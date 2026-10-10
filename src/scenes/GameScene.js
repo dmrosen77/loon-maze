@@ -20,6 +20,7 @@ import {
   RESTART_HP_COST,
   TURTLE_DAMAGE,
   TURTLE_KNOCKBACK,
+  EAGLE_DAMAGE,
   SPRITE_PIXEL_SIZE,
   REED_SWAY_SPEED,
   REED_GUST_SPACING,
@@ -71,6 +72,10 @@ import Fish from '../game/Fish.js';
 import Pickups from '../game/Pickups.js';
 import Turtles from '../game/Turtles.js';
 import WanderingChick from '../game/WanderingChick.js';
+import EagleShadow from '../game/EagleShadow.js';
+import Currents from '../game/Currents.js';
+import eagleForwardUrl from '../assets/eagle-wings-forward.png';
+import eagleBackUrl from '../assets/eagle-wings-back.png';
 import { ripple, popText, hitFlash, heartBurst } from '../game/effects.js';
 import HpBar from '../ui/HpBar.js';
 import AirBar from '../ui/AirBar.js';
@@ -106,6 +111,7 @@ const REUNITE_DISTANCE = 20;
 const DEPTH = {
   water: 0,
   pads: 1,
+  currents: 1.2,
   fish: 1.5,
   wake: 2,
   reeds: 3,
@@ -115,6 +121,7 @@ const DEPTH = {
   loon: 6,
   bubbles: 7,
   critters: 8,
+  eagle: 8.5,
   tint: 9,
   glow: 9.5,
   effects: 9.6,
@@ -125,6 +132,12 @@ const DEPTH = {
 export default class GameScene extends Phaser.Scene {
   constructor() {
     super('GameScene');
+  }
+
+  // The eagle art for its shadow (the game-over cutscene uses the same images).
+  preload() {
+    if (!this.textures.exists('eagle-wings-forward')) this.load.image('eagle-wings-forward', eagleForwardUrl);
+    if (!this.textures.exists('eagle-wings-back')) this.load.image('eagle-wings-back', eagleBackUrl);
   }
 
   // Started with one of (see levelPlan.js):
@@ -235,6 +248,11 @@ export default class GameScene extends Phaser.Scene {
     this.physics.add.existing(this.loon);
     this.loon.body.setSize(LOON_BODY_SIZE, LOON_BODY_SIZE);
     this.loon.body.setCollideWorldBounds(true);
+    // The world's edge is the maze's outer ring of reeds, so hitting it is a
+    // bump like any other reed wall (the reeds' own collider never gets the
+    // chance: the edge stops the loon first).
+    this.loon.body.onWorldBounds = true;
+    this.physics.world.on(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.onWorldBounds, this);
     this.loon.body.setBounce(LOON_BOUNCE);
     this.lastLoonX = loonStart.x;
     this.lastLoonY = loonStart.y;
@@ -282,6 +300,17 @@ export default class GameScene extends Phaser.Scene {
           onBite: (turtle) => this.turtleBite(turtle),
         })
       : null;
+    this.currents = this.plan.currents
+      ? new Currents(this, this.info, { count: this.plan.currents, depth: DEPTH.currents, random: this.plan.random })
+      : null;
+    this.eagle = this.plan.eagle
+      ? new EagleShadow(this, {
+          depth: DEPTH.eagle,
+          arrowDepth: DEPTH.hud,
+          audio: this.audio,
+          onStrike: () => this.eagleStrike(),
+        })
+      : null;
     if (this.plan.chickWander) {
       new WanderingChick(this, this.baby, this.info, {
         radius: this.plan.chickWander,
@@ -310,6 +339,7 @@ export default class GameScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.HIDDEN, this.openPause, this);
     this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
+      this.physics.world.off(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.onWorldBounds, this);
       this.game.events.off(Phaser.Core.Events.BLUR, this.openPause, this);
       this.game.events.off(Phaser.Core.Events.HIDDEN, this.openPause, this);
       this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
@@ -609,6 +639,15 @@ export default class GameScene extends Phaser.Scene {
     this.takeDamage(now, TURTLE_DAMAGE);
   }
 
+  // The eagle's shadow passed over the loon on the surface.
+  eagleStrike() {
+    const now = this.time.now;
+    if (this.reunited || this.gameOver) return;
+    this.audio?.screech();
+    popText(this, this.loon.x, this.loon.y - 16, 'EAGLE!', { depth: DEPTH.effects, color: '#ff6a6a' });
+    this.takeDamage(now, EAGLE_DAMAGE);
+  }
+
   // An extra dive for this level.
   grabDiveBubble(x, y) {
     this.divesLeft += 1;
@@ -683,6 +722,10 @@ export default class GameScene extends Phaser.Scene {
       if (!this.lesson) this.takeDamage(now); // The dive lesson is for practice: no damage.
     }
     this.lastBumpTime = now;
+  }
+
+  onWorldBounds(body) {
+    if (body === this.loon.body) this.bump();
   }
 
   // `force` hurts even while the loon is still blinking from the last hit.
@@ -841,6 +884,11 @@ export default class GameScene extends Phaser.Scene {
       if (pressed && this.divesLeft > 0 && this.air >= AIR_PER_DIVE_MS) this.startDive();
     } else {
       this.air = Math.max(0, this.air - delta * (this.wallsOverhead() === 'log' ? LOG_AIR_FACTOR : 1));
+      // Only just under the edge of the reeds (the loon's middle is in open
+      // water, e.g. drifting while diving in place)? Ease it back out so it
+      // can come up, rather than being stuck under.
+      const wantsUp = !wantsDive || this.air <= 0;
+      if (wantsUp && this.isUnderReeds()) this.nudgeOutOfReeds();
       const underReeds = this.isUnderReeds();
       if (this.air <= 0) {
         if (underReeds) this.popBack(time);
@@ -853,6 +901,22 @@ export default class GameScene extends Phaser.Scene {
       }
     }
     this.airBar.setValue(this.air);
+  }
+
+  // If the loon's middle is over open water but its collision box pokes under
+  // a neighboring wall (even diagonally), move it just far enough to sit
+  // wholly inside its own open tile.
+  nudgeOutOfReeds() {
+    const { col, row } = tileAt(this.loon.x, this.loon.y);
+    if (this.maze[row]?.[col] === '#' || this.maze[row]?.[col] === undefined) return;
+    const half = LOON_BODY_SIZE / 2;
+    const x = Phaser.Math.Clamp(this.loon.x, col * TILE_SIZE + half, (col + 1) * TILE_SIZE - half);
+    const y = Phaser.Math.Clamp(this.loon.y, row * TILE_SIZE + half, (row + 1) * TILE_SIZE - half);
+    if (x !== this.loon.x || y !== this.loon.y) {
+      const velocity = this.loon.body.velocity.clone();
+      this.loon.body.reset(x, y);
+      this.loon.body.velocity.copy(velocity);
+    }
   }
 
   // Whether any part of the loon's collision box is over a reed tile.
@@ -929,6 +993,7 @@ export default class GameScene extends Phaser.Scene {
       }
       this.fish.update(this.loon);
       this.turtles?.update(this.loon, this.diving, time);
+      this.eagle?.update(this.loon, this.diving);
       this.pickups?.update(this.loon);
     }
 
@@ -1028,6 +1093,12 @@ export default class GameScene extends Phaser.Scene {
     const target = paddling
       ? input.clone().scale(LOON_SPEED * this.speedFactor())
       : new Phaser.Math.Vector2(WATER_DRIFT.x, WATER_DRIFT.y).scale(LOON_FLOAT_DRIFT);
+    // A current carries the loon along: faster with it, slower against it.
+    if (this.currents) {
+      const flow = this.currents.flowAt(this.loon.x, this.loon.y);
+      target.x += flow.x;
+      target.y += flow.y;
+    }
     const maxChange = ((paddling ? LOON_ACCELERATION : LOON_GLIDE_DRAG) * delta) / 1000;
     const change = target.subtract(velocity);
     if (change.length() > maxChange) change.setLength(maxChange);

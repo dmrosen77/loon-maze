@@ -53,6 +53,15 @@
         justify-content: center;
         padding: 24px;
         box-sizing: border-box;
+        flex-direction: column;
+        gap: 24px;
+      }
+      /* Pages can't unlock rotation; on iPhone, Portrait Orientation Lock stops it. */
+      #rotate small {
+        color: #9fc3e0;
+        font-size: 9px;
+        line-height: 2;
+        max-width: 320px;
       }
       @media (orientation: portrait) and (pointer: coarse) {
         #rotate { display: flex; }
@@ -61,7 +70,10 @@
   </head>
   <body>
     <div id="game"></div>
-    <div id="rotate">Turn your phone sideways to play</div>
+    <div id="rotate">
+      <span>Turn your phone sideways to play</span>
+      <small>Doesn't turn? Switch off Portrait Orientation Lock (swipe down from the top-right corner, tap the lock).</small>
+    </div>
     <script type="module" src="./src/main.js"></script>
   </body>
 </html>

@@ -75,3 +75,44 @@ export function tileCenter({ col, row }) {
 export function tileAt(x, y) {
   return { col: Math.floor(x / TILE_SIZE), row: Math.floor(y / TILE_SIZE) };
 }
+
+// Every maximal straight line of open tiles, across and down, at least
+// `minLength` long (as arrays of { col, row }).
+export function straightRuns(info, minLength) {
+  const runs = [];
+  for (let row = 0; row < info.rows; row++) {
+    let run = [];
+    for (let col = 0; col <= info.cols; col++) {
+      if (col < info.cols && info.isOpen(col, row)) run.push({ col, row });
+      else {
+        if (run.length >= minLength) runs.push(run);
+        run = [];
+      }
+    }
+  }
+  for (let col = 0; col < info.cols; col++) {
+    let run = [];
+    for (let row = 0; row <= info.rows; row++) {
+      if (row < info.rows && info.isOpen(col, row)) run.push({ col, row });
+      else {
+        if (run.length >= minLength) runs.push(run);
+        run = [];
+      }
+    }
+  }
+  return runs;
+}
+
+// The parts of a run made of allowed tiles, at least `minLength` long.
+export function splitRun(run, allowed, minLength) {
+  const parts = [];
+  let part = [];
+  for (const tile of [...run, null]) {
+    if (tile && allowed(tile)) part.push(tile);
+    else {
+      if (part.length >= minLength) parts.push(part);
+      part = [];
+    }
+  }
+  return parts;
+}

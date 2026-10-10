@@ -53,15 +53,16 @@ export const LAKE_MAZE_TRIES = 60;
 
 // What each lake adds, in LAKES order: dives per level (0 = no diving yet),
 // whether extra-dive bubbles can appear, whether snapping turtles patrol, and
-// how far the chick wanders from its spot (0 = it stays put). Diving starts
-// at the second lake, after the dive lesson; turtles and a wandering chick at
-// the third.
+// how far the chick wanders from its spot (0 = it stays put), and whether the
+// eagle hunts and currents flow. Diving starts at the second lake, after the
+// dive lesson; turtles and a wandering chick at the third; the eagle and
+// currents at the fourth.
 export const LAKE_FEATURES = [
-  { dives: 0, bubbles: false, turtles: false, chickWander: 0 },
-  { dives: 1, bubbles: true, turtles: false, chickWander: 0 },
-  { dives: 2, bubbles: true, turtles: true, chickWander: 1 },
-  { dives: 3, bubbles: true, turtles: true, chickWander: 2 },
-  { dives: 4, bubbles: true, turtles: true, chickWander: 2 },
+  { dives: 0, bubbles: false, turtles: false, chickWander: 0, eagle: false, currents: false },
+  { dives: 1, bubbles: true, turtles: false, chickWander: 0, eagle: false, currents: false },
+  { dives: 2, bubbles: true, turtles: true, chickWander: 1, eagle: false, currents: false },
+  { dives: 3, bubbles: true, turtles: true, chickWander: 2, eagle: true, currents: true },
+  { dives: 4, bubbles: true, turtles: true, chickWander: 2, eagle: true, currents: true },
 ];
 
 // How long the reunion cutscene plays before the next level starts (Enter skips it).
@@ -164,7 +165,37 @@ export const FEATURE_LEVELS = {
   turtles: 4,
   chickWander: 5,
   diveBubbles: 7,
+  eagle: 8,
+  currents: 9,
 };
+
+// The eagle's shadow (src/game/EagleShadow.js). From its first level, the
+// eagle makes a pass every EAGLE_INTERVAL_MS (a random time in that range;
+// the first after EAGLE_FIRST_MS): a screech and a warning arrow at the
+// screen's edge, then EAGLE_WARNING_MS later its shadow sweeps across the
+// lake at EAGLE_SPEED, aimed at where the loon was. If the shadow passes over
+// the loon on the surface it costs EAGLE_DAMAGE HP; diving (or getting out
+// of its way) dodges it. The shadow is the game-over eagle at EAGLE_SHADOW_SCALE,
+// and it hits within EAGLE_HIT_LENGTH along its path and EAGLE_HIT_SPAN across.
+export const EAGLE_FIRST_MS = [7000, 12000];
+export const EAGLE_INTERVAL_MS = [16000, 26000];
+export const EAGLE_WARNING_MS = 1500;
+export const EAGLE_SPEED = 560;
+export const EAGLE_DAMAGE = 5;
+export const EAGLE_SHADOW_SCALE = 3.2;
+export const EAGLE_HIT_LENGTH = 55;
+export const EAGLE_HIT_SPAN = 150;
+
+// Currents (src/game/Currents.js): some straight stretches of open water
+// (at least CURRENT_MIN_RUN tiles, not right by the start) flow one way at
+// CURRENT_SPEED, added to however the loon is swimming there (faster with
+// it, slower against it, carried along when floating). ARCADE has one from
+// FEATURE_LEVELS.currents and one more every CURRENT_EVERY_LEVELS; LAKES two
+// on each day of its current lakes, plus one per day. Up to CURRENT_MAX.
+export const CURRENT_SPEED = 90;
+export const CURRENT_MIN_RUN = 4;
+export const CURRENT_EVERY_LEVELS = 3;
+export const CURRENT_MAX = 6;
 
 // Snapping turtles (src/game/Turtles.js) patrol straight stretches of open
 // water, never within TURTLE_START_CLEAR tiles of the start. Swimming into one

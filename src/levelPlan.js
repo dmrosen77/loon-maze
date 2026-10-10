@@ -27,6 +27,8 @@ import {
   TURTLE_EVERY_LEVELS,
   CHICK_WANDER_GROWTH,
   CHICK_WANDER_MAX,
+  CURRENT_EVERY_LEVELS,
+  CURRENT_MAX,
   TIME_OF_DAY,
   fishForLevel,
   mazeStage,
@@ -78,6 +80,10 @@ function arcadePlan(level) {
   if (level === FEATURE_LEVELS.diveBubbles) callouts.push('BUBBLES GIVE EXTRA DIVES!');
   if (level === FEATURE_LEVELS.turtles) callouts.push('WATCH OUT FOR TURTLES!');
   if (level === FEATURE_LEVELS.chickWander) callouts.push('YOUR CHICK IS EXPLORING!');
+  if (level === FEATURE_LEVELS.eagle) callouts.push('THE EAGLE HUNTS! DIVE TO HIDE');
+  if (level === FEATURE_LEVELS.currents) callouts.push('CURRENTS PUSH YOU ALONG');
+  const currents =
+    level >= FEATURE_LEVELS.currents ? Math.min(CURRENT_MAX, 1 + Math.floor((level - FEATURE_LEVELS.currents) / CURRENT_EVERY_LEVELS)) : 0;
   const turtles =
     level >= FEATURE_LEVELS.turtles ? Math.min(TURTLE_MAX, 1 + Math.floor((level - FEATURE_LEVELS.turtles) / TURTLE_EVERY_LEVELS)) : 0;
   const chickWander =
@@ -99,6 +105,8 @@ function arcadePlan(level) {
     fishCount: fishForLevel(level),
     turtles,
     chickWander,
+    eagle: level >= FEATURE_LEVELS.eagle,
+    currents,
     levelPoints: LEVEL_POINTS * level,
     label: `Level ${level}`,
     bannerTitle: `Level ${level}`,
@@ -142,6 +150,13 @@ function lakePlan(lake, number) {
   if (features.turtles && lake === firstTurtleLake && number === 1) callouts.push('WATCH OUT FOR TURTLES!');
   const firstWanderLake = LAKE_FEATURES.findIndex((f) => f.chickWander > 0);
   if (lake === firstWanderLake && number === 2) callouts.push('YOUR CHICK IS EXPLORING!');
+  // The eagle from the first eagle lake's first level; currents from its second.
+  const firstEagleLake = LAKE_FEATURES.findIndex((f) => f.eagle);
+  if (features.eagle && lake === firstEagleLake && number === 1) callouts.push('THE EAGLE HUNTS! DIVE TO HIDE');
+  const firstCurrentLake = LAKE_FEATURES.findIndex((f) => f.currents);
+  const currentsStart = lake === firstCurrentLake && number === 1;
+  const currents = features.currents && !currentsStart ? Math.min(CURRENT_MAX, 2 + info.day) : 0;
+  if (lake === firstCurrentLake && number === 2) callouts.push('CURRENTS PUSH YOU ALONG');
 
   return {
     mode: 'lakes',
@@ -162,6 +177,8 @@ function lakePlan(lake, number) {
     // The chick starts wandering from the lake's second level (Day 1 - Day),
     // so its first level there is the usual sitting chick.
     chickWander: lake === firstWanderLake && number === 1 ? 0 : features.chickWander,
+    eagle: features.eagle,
+    currents,
     levelPoints: LEVEL_POINTS * (d + 1),
     label: `${info.name}  ${info.dayLabel}`,
     bannerTitle: info.name,
@@ -185,6 +202,8 @@ function lessonPlan() {
     fishCount: 0,
     turtles: 0,
     chickWander: 0,
+    eagle: false,
+    currents: 0,
     levelPoints: 0,
     label: 'Dive lesson',
     bannerTitle: 'DIVE LESSON',
