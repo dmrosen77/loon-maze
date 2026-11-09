@@ -15,7 +15,6 @@ import {
   LOON_TURN_SPEED,
   LOON_BODY_SIZE,
   LOON_MAX_HP,
-  HIT_DAMAGE,
   LOON_INVULNERABLE_MS,
   RESTART_HP_COST,
   TURTLE_DAMAGE,
@@ -177,7 +176,7 @@ export default class GameScene extends Phaser.Scene {
     this.score = this.mode === 'lakes' ? 0 : (data.score ?? 0);
     if (this.mode === 'lakes') setLastPlayed(this.plan.lake, this.plan.number);
     this.invulnerableUntil = 0;
-    this.hitsThisLevel = 0; // For the no-hit star.
+    this.hitsThisLevel = 0; // Hazard hits, for the no-hit star.
     this.fishPoints = 0; // Points from fish this level, shown on the reunion screen.
     this.lastBumpTime = 0;
     this.nextStrokeTime = 0;
@@ -734,7 +733,6 @@ export default class GameScene extends Phaser.Scene {
     if (now - this.lastBumpTime > 200 && this.impactSpeed >= LOON_HIT_MIN_SPEED) {
       this.audio?.bump();
       ripple(this, this.loon.x, this.loon.y, { depth: DEPTH.ripples, radius: 16 });
-      if (!this.lesson) this.takeDamage(now); // The dive lesson is for practice: no damage.
     }
     this.lastBumpTime = now;
   }
@@ -744,7 +742,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   // `force` hurts even while the loon is still blinking from the last hit.
-  takeDamage(now, amount = HIT_DAMAGE, force = false) {
+  takeDamage(now, amount, force = false) {
     if (!this.isPlaying || (now < this.invulnerableUntil && !force)) return;
     this.tweens.killTweensOf(this.loon);
     this.hp = Math.max(0, this.hp - amount);
@@ -809,9 +807,11 @@ export default class GameScene extends Phaser.Scene {
     const seconds = (this.time.now - this.levelStartTime) / 1000;
     const { levelPoints } = this.plan;
     const speedBonus = Math.max(0, Math.round(SPEED_BONUS_MAX - seconds * SPEED_BONUS_LOSS));
-    // Stars: one for finishing, two for beating par, three for doing it without a hit.
+    // Stars: one for finishing, one for beating par and one for no hazard hits.
     const par = PAR_SECONDS_BASE + this.info.pathLength * PAR_SECONDS_PER_TILE;
-    const stars = seconds > par ? 1 : this.hitsThisLevel > 0 ? 2 : 3;
+    const beatPar = seconds <= par;
+    const noHits = this.hitsThisLevel === 0;
+    const stars = 1 + (beatPar ? 1 : 0) + (noHits ? 1 : 0);
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
     heartBurst(this, this.baby.x, this.baby.y, 'heart-small', { depth: DEPTH.effects });
@@ -832,6 +832,8 @@ export default class GameScene extends Phaser.Scene {
           speedBonus,
           fishPoints: this.fishPoints,
           stars,
+          beatPar,
+          noHits,
         };
         if (this.mode === 'lakes') {
           // Save the result, and notice if it just opened the next lake.

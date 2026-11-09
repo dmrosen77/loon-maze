@@ -70,6 +70,8 @@ export default class ReunionScene extends Phaser.Scene {
     this.speedBonus = data.speedBonus ?? 0;
     this.fishPoints = data.fishPoints ?? 0;
     this.stars = data.stars ?? 1;
+    // Which stars were missed, for the tip under the parent loon.
+    this.missed = [...(data.beatPar === false ? ['BEAT PAR TIME'] : []), ...(data.noHits === false ? ["DON'T GET HURT"] : [])];
     // Cleaner runs heal more: see REUNION_HEAL_BY_STARS.
     this.healedHp = Math.min(LOON_MAX_HP, this.hp + REUNION_HEAL_BY_STARS[this.stars]);
     this.starImages = [];
@@ -270,6 +272,23 @@ export default class ReunionScene extends Phaser.Scene {
       this.starImages.push(star);
     });
     if (this.stars === 3) this.time.delayedCall(2 * 280 + 320, () => this.perfect());
+    this.showStarTip();
+  }
+
+  // How to earn the stars this level missed: one for beating par time, one
+  // for not getting hurt (reed bumps don't count).
+  showStarTip() {
+    if (this.missed.length === 0) return;
+    const tip = this.add
+      .text(this.scale.width / 2, 446, `MORE STARS: ${this.missed.join('  +  ')}`, {
+        ...TEXT_STYLE,
+        fontSize: '12px',
+        color: '#bfe0ff',
+        strokeThickness: 4,
+      })
+      .setOrigin(0.5)
+      .setAlpha(0);
+    this.tweens.add({ targets: tip, alpha: 1, delay: 900, duration: 400 });
   }
 
   // A perfect (3-star) level, celebrated completely over the top: a flash, a

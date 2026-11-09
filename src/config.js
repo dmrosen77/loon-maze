@@ -19,7 +19,7 @@ export const PROCEDURAL_MAZE = true;
 // corridors with few choices, 1 is lots of forks and short dead ends.
 export const LEVEL_1_COLS = 11;
 export const LEVEL_1_ROWS = 9;
-export const LEVELS_PER_STAGE = 4;
+export const LEVELS_PER_STAGE = 5;
 export const GROWTH_PER_STAGE = 4;
 export const MAX_COLS = 41;
 export const MAX_ROWS = 31;
@@ -39,7 +39,7 @@ export function mazeStage(level) {
 // points are LEVEL_POINTS x (d + 1). The next lake opens with
 // LAKE_UNLOCK_STARS stars from the one before (of 48).
 export const LAKE_BRANCHING_PER_STEP = 0.04;
-export const LAKE_UNLOCK_STARS = 32;
+export const LAKE_UNLOCK_STARS = 24;
 export const LAKE_LAST_STEP = 11;
 // Diving levels in LAKES are checked so a dive can't make them trivial: the
 // chick has to be at least LAKE_MIN_CROW_SHARE of the maze's width plus
@@ -91,26 +91,26 @@ export const LOON_GLIDE_DRAG = 260;
 export const LOON_FLOAT_DRIFT = 1.5;
 // How much speed the loon keeps when it bounces off the reeds (0 to 1).
 export const LOON_BOUNCE = 0.35;
-// Hitting the reeds slower than this (pixels per second) is a harmless nudge:
-// no HP lost and no thud. Set to 0 to make every touch count.
+// Hitting the reeds slower than this (pixels per second) is a silent nudge;
+// faster, it thuds and ripples. Reeds never cost HP: only hazards do.
 export const LOON_HIT_MIN_SPEED = 90;
 // Corner assist: when swimming straight toward an opening the loon is too far
 // off-center to fit through, ease it sideways just enough to fit instead of
 // letting it catch on the corner. It helps from up to CORNER_ASSIST_RANGE
 // pixels off the opening's center, sliding sideways at up to
 // CORNER_ASSIST_SPEED. Set the range to 0 to turn it off.
-export const CORNER_ASSIST_RANGE = 26;
+export const CORNER_ASSIST_RANGE = 30;
 export const CORNER_ASSIST_SPEED = 110;
 // Time between paddling sounds while swimming.
 export const LOON_STROKE_MS = 380;
 // How fast the loon turns to face its swimming direction, in radians per second.
 export const LOON_TURN_SPEED = 12;
-// Hit points. Each swim into the reeds costs HIT_DAMAGE, and 0 is game over.
+// Hit points. Only hazards cost HP (turtle bites, the eagle, running out of
+// air under the reeds), never bumping the reeds, and 0 is game over.
 // After a hit the loon can't be hurt again for LOON_INVULNERABLE_MS (it
 // blinks). HP carries over between levels (ARCADE, and within a LAKES day);
 // each reunion heals by the level's stars: REUNION_HEAL_BY_STARS[stars].
 export const LOON_MAX_HP = 50;
-export const HIT_DAMAGE = 1;
 export const REUNION_HEAL_BY_STARS = [0, 0, 1, 2];
 export const LOON_INVULNERABLE_MS = 1500;
 // Restarting a level from the pause menu costs this much HP (never refills
@@ -119,7 +119,7 @@ export const RESTART_HP_COST = 5;
 // Square collision box, so walls behave the same whichever way the loon faces.
 // The sprite is a bit longer than this, so its head can poke into the reeds.
 // Smaller leaves more room in the 40px corridors.
-export const LOON_BODY_SIZE = 20;
+export const LOON_BODY_SIZE = 18;
 
 // Diving. From DIVE_UNLOCK_LEVEL on, holding Space (or the DIVE button on
 // touch screens) takes the loon underwater, where it swims under the reeds at
@@ -136,12 +136,12 @@ export const DIVE_SPEED_FACTOR = 0.75;
 // Dives allowed per level, growing as the loon gets further: from each
 // `level` on, `dives` per level. A level where it grows says so.
 export const DIVE_TIERS = [
-  { level: 6, dives: 1 },
-  { level: 11, dives: 2 },
-  { level: 16, dives: 3 },
-  { level: 21, dives: 4 },
+  { level: 6, dives: 2 },
+  { level: 11, dives: 3 },
+  { level: 16, dives: 4 },
+  { level: 21, dives: 5 },
 ];
-export const AIR_PER_DIVE_MS = 1000;
+export const AIR_PER_DIVE_MS = 1600;
 export const AIR_REFILL = 3;
 export const AIR_OUT_DAMAGE = 3;
 // Underwater the loon shows as a dark shadow: this tint, at this opacity.
@@ -163,10 +163,10 @@ export const REED_GUST_SPACING = 360;
 export const FEATURE_LEVELS = {
   fish: 2,
   turtles: 4,
-  chickWander: 5,
-  diveBubbles: 7,
-  eagle: 8,
-  currents: 9,
+  chickWander: 8,
+  diveBubbles: 10,
+  eagle: 12,
+  currents: 15,
 };
 
 // The eagle's shadow (src/game/EagleShadow.js). From its first level, the
@@ -267,11 +267,12 @@ export function fishForLevel(level) {
 // gives an extra dive for that level.
 export const DIVE_BUBBLE_CHANCE = 0.6;
 
-// Stars on the reunion screen: one for finishing, two for beating par time,
-// three for beating par without a hit. Par is PAR_SECONDS_BASE plus
+// Stars on the reunion screen: one for finishing, plus one for beating par
+// time and one for not getting hurt (reed bumps don't count), each earned on
+// its own. Par is PAR_SECONDS_BASE plus
 // PAR_SECONDS_PER_TILE for each tile on the path from the start to the chick.
 export const PAR_SECONDS_BASE = 4;
-export const PAR_SECONDS_PER_TILE = 0.45;
+export const PAR_SECONDS_PER_TILE = 0.6;
 
 // Time of day: levels cycle through these in order (level 1 is the first).
 // `tint` colors the whole lake (multiplied over it, so white changes nothing,

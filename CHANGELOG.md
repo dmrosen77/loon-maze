@@ -6,6 +6,16 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.12.0] - 2026-11-08
+
+### Changed
+- **Friendlier for everyone.** Bumping the reeds no longer costs HP: they just thud. Only the lake's hazards hurt (turtles, the eagle and running out of air under the reeds).
+- **Stars are three separate goals:** one for reaching your chick, one for beating par time and one for not getting hurt, so you can earn either of the last two without the other. Par time is more generous. The reunion screen now says which stars you missed and how to earn them.
+- The next lake opens with 24 of the previous lake's 48 stars (was 32).
+- More room to steer: the loon fits through the channels more easily and corner assist helps from further off.
+- Each dive's breath lasts 1.6 seconds (was 1), and ARCADE gives one more dive per level at every tier (2 from level 6).
+- ARCADE introduces new things more gradually: turtles at level 4, a wandering chick at 8, dive bubbles at 10, the eagle at 12 and currents at 15, and the lake grows every 5 levels instead of 4.
+
 ## [1.11.2] - 2026-11-08
 
 ### Fixed
@@ -168,7 +178,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.11.2...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.12.0...HEAD
+[1.12.0]: https://github.com/dmrosen77/loon-maze/compare/v1.11.2...v1.12.0
 [1.11.2]: https://github.com/dmrosen77/loon-maze/compare/v1.11.1...v1.11.2
 [1.11.1]: https://github.com/dmrosen77/loon-maze/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/dmrosen77/loon-maze/compare/v1.10.0...v1.11.0
