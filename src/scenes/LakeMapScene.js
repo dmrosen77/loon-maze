@@ -84,6 +84,18 @@ export default class LakeMapScene extends Phaser.Scene {
     this.muteKey = this.input.keyboard.addKey(Phaser.Input.Keyboard.KeyCodes.M);
     this.pad = new PadInput();
     addMuteButton(this, this.audio, width - 12, 12);
+    // Back, for taps and clicks (Esc and B do the same): to the lake list, or
+    // from there to the title menu.
+    this.add
+      .text(12, 6, this.view === 'lake' ? '< LAKES' : '< MENU', {
+        ...TEXT_STYLE,
+        fontSize: '12px',
+        backgroundColor: 'rgba(0, 0, 0, 0.55)',
+        padding: { x: 8, y: 6 },
+      })
+      .setDepth(5)
+      .setInteractive({ useHandCursor: true })
+      .on('pointerdown', () => this.back());
     if (data.notice) this.showNotice(data.notice);
     this.cameras.main.fadeIn(300, 0, 0, 0);
   }
@@ -150,7 +162,7 @@ export default class LakeMapScene extends Phaser.Scene {
       return { card, marker, open, lake: index };
     });
 
-    this.drawPrompt(isTouchDevice() ? 'TAP A LAKE' : 'ARROWS: CHOOSE   ENTER: OPEN   ESC: BACK');
+    this.drawPrompt(isTouchDevice() ? 'TAP A LAKE' : 'ARROWS: CHOOSE   ENTER: OPEN   ESC: MENU');
     const first = data.lake ?? LAKES.findLastIndex((_, i) => isLakeUnlocked(i));
     this.select(Math.max(0, first));
   }
@@ -238,14 +250,6 @@ export default class LakeMapScene extends Phaser.Scene {
     const select = data.select ?? this.items.findLast((item) => item.open && !item.lesson)?.number ?? 1;
     const index = this.items.findIndex((item) => item.number === Math.min(select, LEVELS_PER_LAKE));
     this.select(Math.max(0, index));
-
-    // A back button for touch screens.
-    if (isTouchDevice()) {
-      this.add
-        .text(12, 12, '< LAKES', { ...TEXT_STYLE, fontSize: '12px', backgroundColor: 'rgba(0, 0, 0, 0.35)', padding: { x: 8, y: 6 } })
-        .setInteractive({ useHandCursor: true })
-        .on('pointerdown', () => this.back());
-    }
   }
 
   // ----- Shared.

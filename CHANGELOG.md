@@ -6,6 +6,11 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.11.2] - 2026-11-08
+
+### Fixed
+- The lake map now has an on-screen back button in both views, for every device: **< MENU** on the list of lakes goes back to the title, and **< LAKES** inside a lake goes back to the list. Before, a mouse or touch screen had no way back to the title from LAKES (only Esc or a controller's B did it).
+
 ## [1.11.1] - 2026-11-08
 
 ### Fixed
@@ -163,7 +168,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.11.1...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.11.2...HEAD
+[1.11.2]: https://github.com/dmrosen77/loon-maze/compare/v1.11.1...v1.11.2
 [1.11.1]: https://github.com/dmrosen77/loon-maze/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/dmrosen77/loon-maze/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/dmrosen77/loon-maze/compare/v1.9.1...v1.10.0
