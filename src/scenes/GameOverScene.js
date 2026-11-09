@@ -8,6 +8,7 @@ import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
 import PadInput from '../ui/gamepad.js';
 import { restartPoint } from '../progress.js';
+import StateMachine from '../stateMachine.js';
 
 // Screen pixels per art pixel. The eagle and loon images come from
 // art-source/ via tools/pixelize.py.
@@ -69,8 +70,13 @@ export default class GameOverScene extends Phaser.Scene {
     this.mode = data.mode ?? 'arcade';
     this.lake = data.lake;
     this.number = data.number;
-    this.canLeave = false;
-    this.leaving = false;
+    // 'cutscene' (the eagle carries the loon off), 'ready' once GAME OVER is
+    // up and Enter can leave, then 'leaving'.
+    this.state = new StateMachine('GameOverScene', 'cutscene', {
+      cutscene: ['ready'],
+      ready: ['leaving'],
+      leaving: [],
+    });
     this.carrier = null;
     this.audio = getLakeAudio(this);
     this.audio?.stopMusic();
@@ -251,7 +257,7 @@ export default class GameOverScene extends Phaser.Scene {
     });
 
     this.time.delayedCall(1400, () => {
-      this.canLeave = true;
+      this.state.to('ready');
       const prompt = this.add
         .text(width / 2, height - 60, isTouchDevice() ? 'TAP TO CONTINUE' : 'PRESS ENTER', {
           ...TEXT_STYLE,
@@ -283,8 +289,7 @@ export default class GameOverScene extends Phaser.Scene {
     this.pad.update(time);
     const pressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped || this.pad.confirm;
     this.tapped = false;
-    if (this.canLeave && !this.leaving && pressed) {
-      this.leaving = true;
+    if (pressed && this.state.to('leaving')) {
       this.cameras.main.fadeOut(500, 0, 0, 0);
       this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
         if (this.mode === 'lakes') {

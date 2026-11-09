@@ -81,6 +81,7 @@ import HpBar from '../ui/HpBar.js';
 import AirBar from '../ui/AirBar.js';
 import { TouchStick, addMuteButton, addDiveButton, isTouchDevice } from '../ui/touch.js';
 import PadInput, { isGamepadConnected } from '../ui/gamepad.js';
+import StateMachine from '../stateMachine.js';
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -161,9 +162,17 @@ export default class GameScene extends Phaser.Scene {
     this.wantedDive = false; // Whether dive was held last frame, to catch new presses.
     this.nextBubbleTime = 0;
     this.airBar = null; // Only made on levels with diving.
-    this.reunited = false;
-    this.gameOver = false;
-    this.leaving = false;
+    // The level's lifecycle: playing until the chick is reached ('won'), HP
+    // runs out ('lost') or the player quits from the pause menu ('leaving').
+    // Each ends in a fade to another scene; nothing comes back to 'playing'
+    // except a fresh create(). Pausing isn't a state here: the scene itself is
+    // paused under PauseScene.
+    this.state = new StateMachine('GameScene', 'playing', {
+      playing: ['won', 'lost', 'leaving'],
+      won: [],
+      lost: [],
+      leaving: [],
+    });
     this.hp = data.hp ?? LOON_MAX_HP; // Carried over in ARCADE and within a LAKES day.
     this.score = this.mode === 'lakes' ? 0 : (data.score ?? 0);
     if (this.mode === 'lakes') setLastPlayed(this.plan.lake, this.plan.number);
@@ -339,7 +348,9 @@ export default class GameScene extends Phaser.Scene {
     this.game.events.on(Phaser.Core.Events.HIDDEN, this.openPause, this);
     this.events.on(Phaser.Scenes.Events.RESUME, this.onResume, this);
     this.events.once(Phaser.Scenes.Events.SHUTDOWN, () => {
-      this.physics.world.off(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.onWorldBounds, this);
+      // Arcade physics may have torn its world down already (its own SHUTDOWN
+      // listener can run first), and its listeners go with it.
+      this.physics.world?.off(Phaser.Physics.Arcade.Events.WORLD_BOUNDS, this.onWorldBounds, this);
       this.game.events.off(Phaser.Core.Events.BLUR, this.openPause, this);
       this.game.events.off(Phaser.Core.Events.HIDDEN, this.openPause, this);
       this.events.off(Phaser.Scenes.Events.RESUME, this.onResume, this);
@@ -370,9 +381,15 @@ export default class GameScene extends Phaser.Scene {
     button.on('pointerdown', () => this.openPause());
   }
 
+  // Whether the level is still being played (not won, lost or being left).
+  // The add-on systems in src/game/ check this too.
+  get isPlaying() {
+    return this.state.is('playing');
+  }
+
   // Freezes the level (physics, timers, tweens) under the pause menu.
   openPause() {
-    if (this.reunited || this.gameOver || this.leaving || !this.scene.isActive()) return;
+    if (!this.isPlaying || !this.scene.isActive()) return;
     this.pausedAt = this.game.loop.time;
     const cost = this.lesson ? 0 : RESTART_HP_COST;
     this.scene.launch('PauseScene', {
@@ -409,15 +426,13 @@ export default class GameScene extends Phaser.Scene {
       this.quitToMap();
       return;
     }
-    if (this.leaving) return;
-    this.leaving = true;
+    if (!this.state.to('leaving')) return;
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('TitleScene'));
   }
 
   quitToMap() {
-    if (this.reunited || this.gameOver || this.leaving) return;
-    this.leaving = true;
+    if (!this.state.to('leaving')) return;
     this.cameras.main.fadeOut(400, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       const lake = this.plan.lake ?? this.startData.then?.lake ?? 1;
@@ -630,7 +645,7 @@ export default class GameScene extends Phaser.Scene {
   // from the turtle, and TURTLE_DAMAGE HP, unless it's still blinking from a hit.
   turtleBite(turtle) {
     const now = this.time.now;
-    if (this.reunited || this.gameOver || now < this.invulnerableUntil) return;
+    if (!this.isPlaying || now < this.invulnerableUntil) return;
     this.audio?.snap();
     const away = Phaser.Math.Angle.Between(turtle.x, turtle.y, this.loon.x, this.loon.y);
     this.loon.body.velocity.setToPolar(away, TURTLE_KNOCKBACK);
@@ -642,7 +657,7 @@ export default class GameScene extends Phaser.Scene {
   // The eagle's shadow passed over the loon on the surface.
   eagleStrike() {
     const now = this.time.now;
-    if (this.reunited || this.gameOver) return;
+    if (!this.isPlaying) return;
     this.audio?.screech();
     popText(this, this.loon.x, this.loon.y - 16, 'EAGLE!', { depth: DEPTH.effects, color: '#ff6a6a' });
     this.takeDamage(now, EAGLE_DAMAGE);
@@ -730,7 +745,7 @@ export default class GameScene extends Phaser.Scene {
 
   // `force` hurts even while the loon is still blinking from the last hit.
   takeDamage(now, amount = HIT_DAMAGE, force = false) {
-    if (this.reunited || this.gameOver || (now < this.invulnerableUntil && !force)) return;
+    if (!this.isPlaying || (now < this.invulnerableUntil && !force)) return;
     this.tweens.killTweensOf(this.loon);
     this.hp = Math.max(0, this.hp - amount);
     this.invulnerableUntil = now + LOON_INVULNERABLE_MS;
@@ -762,7 +777,7 @@ export default class GameScene extends Phaser.Scene {
 
   // Out of HP: a moment frozen in red, then fade into the eagle cutscene.
   loseGame() {
-    this.gameOver = true;
+    if (!this.state.to('lost')) return;
     this.loon.body.setVelocity(0, 0);
     this.loon.stop();
     this.tweens.killTweensOf(this.loon);
@@ -784,8 +799,7 @@ export default class GameScene extends Phaser.Scene {
   }
 
   reunite() {
-    if (this.reunited || this.gameOver) return;
-    this.reunited = true;
+    if (!this.state.to('won')) return;
     if (this.lesson) {
       this.finishLesson();
       return;
@@ -985,8 +999,8 @@ export default class GameScene extends Phaser.Scene {
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
     this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
     this.decor.update(this.loon);
-    if (this.lesson && !this.reunited) this.updateLessonHint();
-    if (!this.reunited && !this.gameOver) {
+    if (this.lesson && this.isPlaying) this.updateLessonHint();
+    if (this.isPlaying) {
       // The chick is reached on the surface, when the two are touching.
       if (!this.diving && Phaser.Math.Distance.Between(this.loon.x, this.loon.y, this.baby.x, this.baby.y) < REUNITE_DISTANCE) {
         this.reunite();
@@ -997,7 +1011,7 @@ export default class GameScene extends Phaser.Scene {
       this.pickups?.update(this.loon);
     }
 
-    if (this.gameOver || this.reunited) return;
+    if (!this.isPlaying) return;
 
     // Arrow keys, or the touch joystick (whose drag distance sets how hard the
     // loon paddles).
@@ -1011,7 +1025,7 @@ export default class GameScene extends Phaser.Scene {
     const paddling = input.lengthSq() > 0;
 
     this.updateDive(time, delta);
-    if (this.gameOver) return;
+    if (!this.isPlaying) return;
     this.swim(input, paddling, delta);
     if (paddling && !this.diving) this.assistCorners(input, delta);
     this.animateLoon(paddling, time, delta);

@@ -20,6 +20,7 @@ import { isLessonDone } from '../progress.js';
 import PadInput from '../ui/gamepad.js';
 import { LAKES, LEVELS_PER_LAKE, TIMES_PER_DAY } from '../lakes.js';
 import { lakeStart } from '../levelPlan.js';
+import StateMachine from '../stateMachine.js';
 
 // Screen pixels per art pixel for the big cutscene sprites.
 const BIG_PIXEL = 4;
@@ -80,8 +81,12 @@ export default class ReunionScene extends Phaser.Scene {
     this.lakeTitle = data.title ? `${data.title} ${data.subtitle}` : null;
     this.newBest = Boolean(data.newBest);
     this.unlockedLake = data.unlockedLake ?? null;
-    this.leaving = false;
-    this.riding = false;
+    // 'celebrating' until Enter, a tap or REUNION_MS moves on ('leaving').
+    this.state = new StateMachine('ReunionScene', 'celebrating', {
+      celebrating: ['leaving'],
+      leaving: [],
+    });
+    this.riding = false; // The chick is on the parent's back.
     this.nextWakeTime = 0;
     this.audio = getLakeAudio(this);
 
@@ -508,8 +513,7 @@ export default class ReunionScene extends Phaser.Scene {
   }
 
   nextLevel() {
-    if (this.leaving) return;
-    this.leaving = true;
+    if (!this.state.to('leaving')) return;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       if (this.mode === 'lakes') {

@@ -49,4 +49,20 @@ const config = {
 document.fonts
   .load(`16px "${FONT_FAMILY}"`)
   .catch(() => {})
-  .then(() => new Phaser.Game(config));
+  .then(() => {
+    const game = new Phaser.Game(config);
+    // Development builds only: a handle for the console and for test scripts
+    // (`npm run build` leaves this out). `__game` is the Phaser game, and
+    // `__states()` lists the state of each running or paused scene, like
+    // { GameScene: 'playing (paused)', PauseScene: null }.
+    if (import.meta.env.DEV) {
+      window.__game = game;
+      window.__states = () =>
+        Object.fromEntries(
+          game.scene
+            .getScenes(false)
+            .filter((scene) => scene.sys.isActive() || scene.sys.isPaused())
+            .map((scene) => [scene.sys.settings.key, scene.state ? `${scene.state.current}${scene.sys.isPaused() ? ' (paused)' : ''}` : null]),
+        );
+    }
+  });

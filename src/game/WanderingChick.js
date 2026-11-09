@@ -47,7 +47,7 @@ export default class WanderingChick {
   }
 
   paddle() {
-    if (this.scene.reunited || this.scene.gameOver || !this.baby.active) return;
+    if (!this.scene.isPlaying || !this.baby.active) return;
     const here = tileAt(this.baby.x, this.baby.y);
     const choices = STEPS.map(([dc, dr]) => ({ col: here.col + dc, row: here.row + dr })).filter(({ col, row }) =>
       this.allowed.has(this.key(col, row)),

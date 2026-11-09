@@ -24,6 +24,7 @@ import {
   levelRecord,
   isLessonDone,
 } from '../progress.js';
+import StateMachine from '../stateMachine.js';
 
 const TEXT_STYLE = {
   fontFamily: `"${FONT_FAMILY}"`,
@@ -56,7 +57,12 @@ export default class LakeMapScene extends Phaser.Scene {
 
   create(data = {}) {
     this.view = data.view ?? 'lakes';
-    this.leaving = false;
+    // 'browsing' the map until a level (or the title) is chosen ('leaving').
+    // Which view is showing is `this.view`, not a state: the views swap in place.
+    this.state = new StateMachine('LakeMapScene', 'browsing', {
+      browsing: ['leaving'],
+      leaving: [],
+    });
     this.selected = undefined; // A restarted scene keeps its old fields.
     this.audio = getLakeAudio(this);
     this.audio?.playMusic('title');
@@ -296,7 +302,7 @@ export default class LakeMapScene extends Phaser.Scene {
 
   // Enter or a tap on the selected item.
   activate() {
-    if (this.leaving) return;
+    if (!this.state.is('browsing')) return;
     const item = this.items[this.selected];
     if (!item.open) {
       this.audio?.bump();
@@ -321,8 +327,7 @@ export default class LakeMapScene extends Phaser.Scene {
   }
 
   go(scene, data) {
-    if (this.leaving) return;
-    this.leaving = true;
+    if (!this.state.to('leaving')) return;
     this.cameras.main.fadeOut(300, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start(scene, data));
   }
@@ -330,7 +335,7 @@ export default class LakeMapScene extends Phaser.Scene {
   update(time) {
     this.water.tilePositionX = Math.round((time / 1000) * WATER_DRIFT.x);
     this.water.tilePositionY = Math.round((time / 1000) * WATER_DRIFT.y);
-    if (this.leaving) return;
+    if (!this.state.is('browsing')) return;
 
     const { JustDown } = Phaser.Input.Keyboard;
     const { pad } = this;

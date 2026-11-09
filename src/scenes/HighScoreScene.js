@@ -16,6 +16,7 @@ import eagleForwardUrl from '../assets/eagle-wings-forward.png';
 import eagleBackUrl from '../assets/eagle-wings-back.png';
 import PadInput from '../ui/gamepad.js';
 import { hasEasterEgg, playEasterEgg } from '../game/easterEggs.js';
+import StateMachine from '../stateMachine.js';
 
 const EAGLE_SCALE = 3;
 const EAGLE_Y = 80;
@@ -59,8 +60,18 @@ export default class HighScoreScene extends Phaser.Scene {
     this.attract = Boolean(data.attract);
     this.score = data.score ?? 0;
     this.level = data.level ?? 1;
-    this.canLeave = false;
-    this.leaving = false;
+    // 'loading' (asking the score server for the world table), then
+    // 'initials' for a score that makes the table, 'saving' (any easter egg,
+    // then the save), 'table' (the eagle's banner and the rows flying in) and
+    // 'ready' once Enter can leave. Attract mode can leave at any time.
+    this.state = new StateMachine('HighScoreScene', 'loading', {
+      loading: ['initials', 'table', 'leaving'],
+      initials: ['saving'],
+      saving: ['table'],
+      table: ['ready', 'leaving'],
+      ready: ['leaving'],
+      leaving: [],
+    });
     this.carryingBanner = false;
     this.audio = getLakeAudio(this);
     this.audio?.playMusic('highscore');
@@ -109,7 +120,7 @@ export default class HighScoreScene extends Phaser.Scene {
     // whichever table we have.
     this.worldScores = null;
     fetchWorldScores().then((world) => {
-      if (this.leaving || !this.sys.isActive()) return; // Left before it answered.
+      if (!this.state.is('loading') || !this.sys.isActive()) return; // Left before it answered.
       this.worldScores = world;
       this.useTable(world ?? loadHighScores(), world ? 'WORLD' : 'THIS DEVICE');
       if (!this.attract && qualifies(this.tableScores, this.score)) this.enterInitials();
@@ -123,8 +134,7 @@ export default class HighScoreScene extends Phaser.Scene {
   }
 
   returnToTitle() {
-    if (this.leaving) return;
-    this.leaving = true;
+    if (!this.state.to('leaving')) return;
     this.cameras.main.fadeOut(500, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => this.scene.start('TitleScene'));
   }
@@ -133,6 +143,7 @@ export default class HighScoreScene extends Phaser.Scene {
   // left/right move between slots, typing a letter sets it, Enter moves on
   // (and saves after the third).
   enterInitials() {
+    this.state.to('initials');
     const { width } = this.scale;
     this.initials = ['A', 'A', 'A'];
     this.slot = 0;
@@ -163,7 +174,7 @@ export default class HighScoreScene extends Phaser.Scene {
     this.refreshInitials();
 
     const onKey = (event) => {
-      if (event.repeat || !this.initials) return;
+      if (event.repeat || !this.state.is('initials')) return;
       const key = event.key.toUpperCase();
       if (event.key === 'ArrowUp') this.changeLetter(1);
       else if (event.key === 'ArrowDown') this.changeLetter(-1);
@@ -195,7 +206,7 @@ export default class HighScoreScene extends Phaser.Scene {
 
     this.slotTexts.forEach((text, i) => {
       const select = () => {
-        if (!this.initials) return;
+        if (!this.state.is('initials')) return;
         this.slot = i;
         this.refreshInitials();
       };
@@ -203,11 +214,11 @@ export default class HighScoreScene extends Phaser.Scene {
       parts.push(this.add.triangle(text.x, 416, 0, 0, 20, 24, 40, 0, 0xffffff, 0.8)); // Down
       tappable(text.x, 268, 84, 60, () => {
         select();
-        if (this.initials) this.changeLetter(1);
+        if (this.state.is('initials')) this.changeLetter(1);
       });
       tappable(text.x, 420, 84, 60, () => {
         select();
-        if (this.initials) this.changeLetter(-1);
+        if (this.state.is('initials')) this.changeLetter(-1);
       });
       tappable(text.x, 340, 84, 80, select);
     });
@@ -245,9 +256,8 @@ export default class HighScoreScene extends Phaser.Scene {
   // Enter on the last letter, or the OK button, saves the initials. Some
   // cheeky ones get a silly show first (src/game/easterEggs.js).
   finishInitials() {
-    if (!this.initials) return;
+    if (!this.state.to('saving')) return; // No more typing.
     const name = this.initials.join('');
-    this.initials = null; // No more typing.
     if (hasEasterEgg(name)) playEasterEgg(this, name, this.audio).then(() => this.saveInitials(name));
     else this.saveInitials(name);
   }
@@ -289,6 +299,7 @@ export default class HighScoreScene extends Phaser.Scene {
   // top, and flies off; then the rows fly in. `highlight` is the new entry's
   // position in the table, or -1.
   showTable(highlight) {
+    this.state.to('table');
     const { width } = this.scale;
     this.highlight = highlight;
     this.audio?.screech();
@@ -361,7 +372,7 @@ export default class HighScoreScene extends Phaser.Scene {
     }
 
     this.time.delayedCall(lastDelay + 700, () => {
-      this.canLeave = true;
+      if (!this.state.to('ready')) return; // Attract mode may have left already.
       const prompt = this.add
         .text(width / 2, height - 24, this.attract ? 'INSERT COIN' : isTouchDevice() ? 'TAP TO CONTINUE' : 'PRESS ENTER', {
           ...TEXT_STYLE,
@@ -400,7 +411,7 @@ export default class HighScoreScene extends Phaser.Scene {
     const { pad } = this;
     pad.update(time);
     if (this.attract && pad.any) this.returnToTitle();
-    const typing = Boolean(this.initials);
+    const typing = this.state.is('initials');
     if (typing) {
       if (pad.pressed('up')) this.changeLetter(1);
       if (pad.pressed('down')) this.changeLetter(-1);
@@ -413,6 +424,6 @@ export default class HighScoreScene extends Phaser.Scene {
     // used up and don't count as leaving once the table is shown.
     const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped || (!typing && pad.confirm);
     this.tapped = false;
-    if (this.canLeave && enterPressed) this.returnToTitle();
+    if (this.state.is('ready') && enterPressed) this.returnToTitle();
   }
 }

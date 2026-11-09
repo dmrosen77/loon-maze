@@ -22,6 +22,7 @@ import reedsClumpUrl from '../assets/reeds-clump.png';
 import lilyPadFlowerUrl from '../assets/lily-pad-flower.png';
 import lilyPadUrl from '../assets/lily-pad.png';
 import lilyPadSmallUrl from '../assets/lily-pad-small.png';
+import StateMachine from '../stateMachine.js';
 
 // Screen pixels per art pixel for the PNG sprites (made by tools/pixelize.py).
 const ART_SCALE = 3;
@@ -65,7 +66,14 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   create() {
-    this.starting = false;
+    // 'insertCoin' until the first key or tap turns the sound on (skipped if
+    // it already is), then 'menu', then 'leaving' once a choice (or the idle
+    // timer's high scores) starts the fade out.
+    this.state = new StateMachine('TitleScene', 'insertCoin', {
+      insertCoin: ['menu', 'leaving'],
+      menu: ['leaving'],
+      leaving: [],
+    });
     this.audio = getLakeAudio(this);
     this.audio?.playMusic('title');
 
@@ -133,8 +141,7 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   showHighScores() {
-    if (this.starting) return;
-    this.starting = true; // Ignore Enter while fading out.
+    if (!this.state.to('leaving')) return; // Ignore Enter while fading out.
     this.cameras.main.fadeOut(600, 0, 0, 0);
     this.cameras.main.once(Phaser.Cameras.Scene2D.Events.FADE_OUT_COMPLETE, () => {
       this.scene.start('HighScoreScene', { attract: true });
@@ -287,7 +294,7 @@ export default class TitleScene extends Phaser.Scene {
     const { width, height } = this.scale;
     // Browsers block sound until the first key press, so ask for one first,
     // arcade style: any key "inserts a coin" (and turns the sound on).
-    this.waitingForSound = Boolean(this.audio) && !this.audio.started;
+    const waitingForSound = Boolean(this.audio) && !this.audio.started;
     this.prompt = this.add
       .text(width / 2, 530, 'INSERT COIN', {
         ...TEXT_STYLE,
@@ -295,15 +302,15 @@ export default class TitleScene extends Phaser.Scene {
       })
       .setOrigin(0.5)
       .setDepth(DEPTH.text)
-      .setVisible(this.waitingForSound);
+      .setVisible(waitingForSound);
     this.menu = null;
-    if (!this.waitingForSound) this.showMenu();
+    if (!waitingForSound) this.showMenu();
 
     // Classic arcade blink.
     this.time.addEvent({
       delay: 500,
       loop: true,
-      callback: () => this.prompt.setVisible(this.waitingForSound && !this.prompt.visible),
+      callback: () => this.prompt.setVisible(this.state.is('insertCoin') && !this.prompt.visible),
     });
 
     this.padHintShown = false;
@@ -327,6 +334,7 @@ export default class TitleScene extends Phaser.Scene {
   // The start menu, once the coin is in: CONTINUE (after LAKES has been
   // played), LAKES and ARCADE. Up/down and Enter, or tap one.
   showMenu() {
+    if (!this.state.to('menu')) return;
     const { width } = this.scale;
     const choices = [...(hasPlayedLakes() ? ['CONTINUE'] : []), 'LAKES', 'ARCADE'];
     const top = 515 - ((choices.length - 1) * 30) / 2;
@@ -355,8 +363,7 @@ export default class TitleScene extends Phaser.Scene {
   }
 
   start() {
-    if (this.starting) return;
-    this.starting = true;
+    if (!this.state.is('menu') || !this.state.to('leaving')) return;
     const choice = this.menu[this.menuIndex].label;
     this.audio?.startJingle();
     this.cameras.main.fadeOut(600, 0, 0, 0);
@@ -404,10 +411,9 @@ export default class TitleScene extends Phaser.Scene {
     // doesn't also count as pressing Enter to start.
     const enterPressed = Phaser.Input.Keyboard.JustDown(this.enterKey) || this.tapped || this.pad.confirm;
     this.tapped = false;
-    if (this.waitingForSound && this.pad.any) this.audio.start();
-    if (this.waitingForSound) {
+    if (this.state.is('insertCoin')) {
+      if (this.pad.any) this.audio.start();
       if (this.audio.started) {
-        this.waitingForSound = false;
         this.audio.coin();
         this.prompt.setVisible(false);
         this.showMenu();
@@ -415,7 +421,7 @@ export default class TitleScene extends Phaser.Scene {
       return;
     }
 
-    if (this.starting) return;
+    if (!this.state.is('menu')) return;
     if (Phaser.Input.Keyboard.JustDown(this.upKey) || this.pad.pressed('up')) {
       this.chooseMenu(this.menuIndex - 1);
       this.audio?.blip();

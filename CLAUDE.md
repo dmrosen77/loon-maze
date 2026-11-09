@@ -69,6 +69,15 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Mos
 - Mazes larger than the view scroll with a camera that follows the loon. Smaller mazes are centered.
 - Import Phaser as `import * as Phaser from 'phaser'`.
 
+## State machines
+
+- Each scene's stages are one explicit `StateMachine` (`src/stateMachine.js`) in `this.state`, made in `create()`, instead of separate booleans. `state.is(...)` checks it, and `state.to(next)` moves only along the table and returns false otherwise, so the first of two racing events wins: write `if (!this.state.to('won')) return;`. A misspelled state name throws. `state.history` keeps the last few states.
+  - GameScene: `playing` → `won` (reached the chick), `lost` (out of HP) or `leaving` (quit from the pause menu). Every damage, bite, strike, pause and reunite path checks `this.isPlaying` (a getter), as do `EagleShadow` and `WanderingChick`. Pausing isn't a state: the scene itself is paused under PauseScene.
+  - TitleScene: `insertCoin` → `menu` → `leaving` (`insertCoin` → `leaving` for attract mode).
+  - HighScoreScene: `loading` → `initials` → `saving` → `table` → `ready` → `leaving`. Without a qualifying score it goes from `loading` to `table`, and attract mode can leave at any point it allows.
+  - GameOverScene: `cutscene` → `ready` → `leaving`. ReunionScene: `celebrating` → `leaving`. LakeMapScene: `browsing` → `leaving` (which view is showing is `this.view`, since the views swap in place).
+- New stages go in the scene's table, not in a new flag. Presentational details (`riding`, `carryingBanner`), a turtle's surface cycle and the dive (`diving`, `air`) stay as plain fields: they're timers and animation state inside one stage.
+
 ## Gotchas
 
 - The Arcade collider callback fires every frame while the loon pushes into reeds. Throttle anything triggered from it (see `bump()`).
@@ -81,7 +90,7 @@ Phaser 4 + Vite, plain JavaScript (ES modules, no TypeScript, no framework). Mos
 
 - When the pane is hidden, the game loop is throttled, so time-based events like the level advance only move forward while screenshots are being taken.
 - Synthetic `KeyboardEvent`s dispatched on `window` drive movement. They don't count as user activation for audio, so click the canvas first.
-- Random mazes can't be steered by script. To test reunion or levels, temporarily expose the game (`window.__game = new Phaser.Game(config)`), then use `scene.loon.body.reset(x, y)` or `scene.scene.restart({ level })`. Remove the hook before committing.
+- Development builds expose `window.__game` (the Phaser game) and `window.__states()` (each running or paused scene's state, like `{ GameScene: 'playing (paused)', PauseScene: null }`), set up in `main.js` behind `import.meta.env.DEV`, so production builds leave them out. Random mazes can't be steered by script, so use `scene.loon.body.reset(x, y)` or `scene.scene.restart({ level })`, and check results with `__states()` or `scene.state.history` rather than screenshots.
 - For timing-sensitive tests (physics, speeds), step the game yourself instead of relying on screenshots: `game.loop.step(performance.now())` every 16ms from a script gives normal 60fps frames even while the pane is hidden. Scene changes (`scene.start`) are also only processed on a step. The real time between your script calls also counts as game time on the next step, so timers like `REUNION_MS` can fire "early". Do a whole check inside one script. After editing a file, the dev server can briefly serve the old version, so confirm the running code with `someFunction.toString()` if results look stale.
 - A restarted scene is the same object, so anything you patch on it in a test (like `scene.someMethod = () => {}`) survives `scene.restart()` and later `scene.start()`. Use `delete scene.someMethod` to undo it.
 - Cutscenes can finish between screenshots. Slow one down with `scene.time.timeScale`, `scene.tweens.timeScale` and `scene.anims.globalTimeScale` (for example 0.3).

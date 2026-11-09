@@ -41,7 +41,7 @@ export default class EagleShadow {
   // Pick a direction, aim at the loon, and show where the eagle will come from.
   warn() {
     const { scene } = this;
-    if (scene.reunited || scene.gameOver) return;
+    if (!scene.isPlaying) return;
     const { loon } = scene;
     const heading = Phaser.Math.FloatBetween(0, Math.PI * 2);
     const target = { x: loon.x + Phaser.Math.Between(-30, 30), y: loon.y + Phaser.Math.Between(-30, 30) };
@@ -69,7 +69,7 @@ export default class EagleShadow {
   // The shadow crosses from well off one side of the view to well off the other.
   fly(target, heading) {
     const { scene } = this;
-    if (scene.reunited || scene.gameOver) return;
+    if (!scene.isPlaying) return;
     const reach = Math.hypot(scene.scale.width, scene.scale.height) / 2 + 300;
     const dx = Math.cos(heading);
     const dy = Math.sin(heading);

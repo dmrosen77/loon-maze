@@ -6,6 +6,14 @@ All notable changes to Loon Maze. The format is based on
 
 ## [Unreleased]
 
+## [1.11.1] - 2026-11-08
+
+### Fixed
+- After the game had been paused (including the automatic pause when you switch tabs or apps), finishing or leaving a level hit an error while tidying up, which left its pause-on-blur listeners behind.
+
+### Changed
+- Each screen now runs on one explicit state machine instead of several separate yes/no flags, so impossible combinations (like losing after winning) can't happen. Development builds expose `__game` and `__states()` for testing.
+
 ## [1.11.0] - 2026-10-10
 
 ### Added
