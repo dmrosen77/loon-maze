@@ -163,7 +163,8 @@ First release.
 - Pixel art throughout, with animated reed walls, drifting water and wake particles.
 - Synthesized music and sound effects, and an arcade font.
 
-[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.11.0...HEAD
+[Unreleased]: https://github.com/dmrosen77/loon-maze/compare/v1.11.1...HEAD
+[1.11.1]: https://github.com/dmrosen77/loon-maze/compare/v1.11.0...v1.11.1
 [1.11.0]: https://github.com/dmrosen77/loon-maze/compare/v1.10.0...v1.11.0
 [1.10.0]: https://github.com/dmrosen77/loon-maze/compare/v1.9.1...v1.10.0
 [1.9.1]: https://github.com/dmrosen77/loon-maze/compare/v1.9.0...v1.9.1
